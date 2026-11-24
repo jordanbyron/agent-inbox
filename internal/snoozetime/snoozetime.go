@@ -21,7 +21,7 @@ var weekdays = map[string]time.Weekday{
 }
 
 var (
-	durationPattern = regexp.MustCompile(`^(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)$`)
+	durationPattern = regexp.MustCompile(`^(\d+)\s*([a-z]+)$`)
 	weekdayPattern  = regexp.MustCompile(`^(sun|mon|tue|wed|thu|fri|sat)[a-z]*$`)
 	clockPattern    = regexp.MustCompile(`^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$`)
 )
@@ -41,7 +41,9 @@ var (
 func Parse(text string, now time.Time) (wake time.Time, ok bool) {
 	text = strings.ToLower(strings.TrimSpace(text))
 	if m := durationPattern.FindStringSubmatch(text); m != nil {
-		return afterDuration(m[1], units[m[2]], now)
+		if unit, ok := units[m[2]]; ok {
+			return afterDuration(m[1], unit, now)
+		}
 	}
 	words := strings.Fields(text)
 	if len(words) == 0 {
@@ -55,15 +57,19 @@ func Parse(text string, now time.Time) (wake time.Time, ok bool) {
 		}
 		return next(now, evening), true
 	case head == "tomorrow":
-		c, ok := timeOfDay(rest)
-		return on(now, 1, c), ok
+		if c, ok := timeOfDay(rest); ok {
+			return on(now, 1, c), true
+		}
 	case weekdayPattern.MatchString(head):
-		c, ok := timeOfDay(rest)
-		return onWeekday(now, weekdays[head[:3]], c), ok
+		if c, ok := timeOfDay(rest); ok {
+			return onWeekday(now, weekdays[head[:3]], c), true
+		}
 	default:
-		c, ok := parseClock(text)
-		return next(now, c), ok
+		if c, ok := parseClock(text); ok {
+			return next(now, c), true
+		}
 	}
+	return time.Time{}, false
 }
 
 func afterDuration(count string, unit time.Duration, now time.Time) (time.Time, bool) {

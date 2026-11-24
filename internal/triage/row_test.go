@@ -397,6 +397,12 @@ func TestShouldAutoSettle(t *testing.T) {
 		{name: "not on a pull request resolved before the agent began", agent: agent(triage.StatusBlocked, old), entry: recent},
 		{name: "not while it is working", agent: agent(triage.StatusWorking, merged), entry: recent},
 		{name: "not when it is in error", agent: agent(triage.StatusError, merged), entry: recent},
+		{name: "not before it has reported a status", agent: agent(triage.StatusStarting, merged), entry: recent},
+		{
+			name:  "not when nothing says when it began",
+			agent: triage.Agent{Status: triage.StatusDone, HasBlock: true, PullRequests: []triage.PullRequest{merged}},
+			entry: recent,
+		},
 		{name: "not while pinned", agent: agent(triage.StatusDone, merged), entry: triage.Entry{PinnedAt: now}},
 		{name: "not while snoozed", agent: agent(triage.StatusDone, merged), entry: triage.Entry{WakeAt: now.Add(15 * time.Minute)}},
 		{name: "not while snoozed until woken", agent: agent(triage.StatusDone, merged), entry: triage.Entry{UntilWoken: true}},

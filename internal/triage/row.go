@@ -96,7 +96,12 @@ func (r Row) ShouldAutoSettle(now time.Time, shown bool) bool {
 	}
 	// Blocked does not hold it: an agent that opens a pull request ends its
 	// turn asking whether anything needs changing, and merging answers it.
-	if r.Agent.Status == StatusWorking || r.Agent.Status == StatusError {
+	if !r.Agent.Finished() && r.Agent.Status != StatusBlocked {
+		return false
+	}
+	// Without a start time every resolved pull request would count as the
+	// agent's own, and closing a tab is not a guess to make.
+	if r.Agent.Began.IsZero() {
 		return false
 	}
 	own := r.Agent.ownPullRequests()

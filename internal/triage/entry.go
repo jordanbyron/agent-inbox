@@ -86,8 +86,8 @@ func (e *Entry) Wake(a Agent, now time.Time) {
 	}
 }
 
-// Settle records that the agent is done with, ending any snooze and any
-// earlier wake.
+// Settle records when the agent was settled, ending any snooze and any
+// earlier wake. The section follows the block, which the caller closes.
 func (e *Entry) Settle(now time.Time) {
 	e.SettledAt = stamp(now)
 	e.clearSnooze()

@@ -93,8 +93,9 @@ func TestParseRejects(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, ok := snoozetime.Parse(tc.text, now)
+			got, ok := snoozetime.Parse(tc.text, now)
 			require.False(t, ok)
+			require.Zero(t, got)
 		})
 	}
 }
