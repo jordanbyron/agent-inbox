@@ -29,24 +29,31 @@ const (
 	EventSessionCreated      EventType = "session_created"
 	EventSessionDestroyed    EventType = "session_destroyed"
 	EventSessionLabelChanged EventType = "session_label_changed"
+	EventClientJoined        EventType = "client_joined"
+	EventClientLeft          EventType = "client_left"
+	EventClientConnected     EventType = "client_connected"
+	EventClientDisconnected  EventType = "client_disconnected"
 )
 
 // Event is one thing that happened on the server. Each type fills the ids
 // it is about; Label goes with the created and label-changed types, Record
 // with EventStatusChanged, RecordIDs with EventStatusRemoved, Reason with
-// both status types, ExitCode with EventProgramExited and Revision with
-// EventViewChanged.
+// both status types, ExitCode with EventProgramExited, Revision with
+// EventViewChanged, and ClientID with the four client types. ClientKind
+// goes with EventClientJoined: "app" for a Rex app, "cli" for a rex command.
 type Event struct {
-	Type      EventType
-	SessionID string
-	WindowID  string
-	BlockID   string
-	Label     string
-	Record    StatusRecord
-	RecordIDs []string
-	Reason    string
-	ExitCode  int
-	Revision  int
+	Type       EventType
+	SessionID  string
+	WindowID   string
+	BlockID    string
+	Label      string
+	Record     StatusRecord
+	RecordIDs  []string
+	Reason     string
+	ExitCode   int
+	Revision   int
+	ClientID   string
+	ClientKind string
 }
 
 // A clipboard or selection event can carry a large copy.
@@ -128,6 +135,13 @@ type wireFields struct {
 		ID    string `json:"session_id"`
 		Label string `json:"label"`
 	} `json:"session"`
+	Client struct {
+		ID   string `json:"client_id"`
+		Info struct {
+			Kind string `json:"kind"`
+		} `json:"info"`
+	} `json:"client"`
+	ClientID  string          `json:"client_id"`
 	SessionID string          `json:"session_id"`
 	WindowID  string          `json:"window_id"`
 	BlockID   string          `json:"block_id"`
@@ -159,6 +173,10 @@ func decodeEvent(line []byte) (Event, bool, error) {
 		return Event{Type: outer.Type, SessionID: fields.Session.ID, Label: fields.Session.Label}, true, nil
 	case EventSessionDestroyed:
 		return Event{Type: outer.Type, SessionID: fields.SessionID}, true, nil
+	case EventClientJoined:
+		return Event{Type: outer.Type, ClientID: fields.Client.ID, ClientKind: fields.Client.Info.Kind}, true, nil
+	case EventClientLeft:
+		return Event{Type: outer.Type, ClientID: fields.ClientID}, true, nil
 	case "session_event":
 		return decodeSessionEvent(fields.SessionID, fields.Event)
 	}
@@ -179,6 +197,9 @@ func decodeSessionEvent(sessionID string, inner wireEvent) (Event, bool, error) 
 		Revision:  fields.Revision,
 	}
 	switch inner.Type {
+	case EventClientConnected, EventClientDisconnected:
+		event.ClientID = fields.ClientID
+		return event, true, nil
 	case EventBlockCreated, EventBlockClosed, EventWindowCreated, EventWindowClosed,
 		EventWindowLabelChanged, EventActiveWindowChanged, EventViewChanged, EventSessionLabelChanged:
 		return event, true, nil

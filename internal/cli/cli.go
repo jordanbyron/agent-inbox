@@ -12,9 +12,11 @@ func New() *cobra.Command {
 	root := &cobra.Command{
 		Use:          "agent-inbox",
 		Short:        "A triage inbox for coding agents running in Rex",
+		Args:         cobra.NoArgs,
+		RunE:         showInbox,
 		SilenceUsage: true,
 	}
-	root.AddCommand(newVersionCommand(), newListCommand())
+	root.AddCommand(newVersionCommand(), newListCommand(), newLsCommand(), newWatchCommand())
 	root.AddCommand(newFormCommand())
 	root.AddCommand(verbCommands(openInbox)...)
 	return root

@@ -9,6 +9,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/charmbracelet/x/term v0.2.2
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/rivo/uniseg v0.4.8-0.20261110175422-3a370411ca06
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1

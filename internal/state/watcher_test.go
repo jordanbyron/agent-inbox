@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"testing"
 
@@ -50,4 +51,21 @@ func TestWatcherLockFreedWhenHolderKilled(t *testing.T) {
 	lock, err := state.New(dir).TakeWatcherLock("v2.0.0")
 	require.NoError(t, err)
 	require.NoError(t, lock.Close())
+}
+
+func TestWatcherHolder(t *testing.T) {
+	dir := t.TempDir()
+	_, err := state.New(dir).WatcherHolder()
+	require.ErrorIs(t, err, fs.ErrNotExist)
+
+	lock, err := state.New(dir).TakeWatcherLock("v1.2.3")
+	require.NoError(t, err)
+	held, err := state.New(dir).WatcherHolder()
+	require.NoError(t, err)
+	require.Equal(t, state.HeldError{PID: os.Getpid(), Version: "v1.2.3"}, held)
+
+	require.NoError(t, lock.Close())
+	held, err = state.New(dir).WatcherHolder()
+	require.NoError(t, err)
+	require.Equal(t, os.Getpid(), held.PID, "the last holder stays written after it lets go")
 }
