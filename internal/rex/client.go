@@ -263,6 +263,34 @@ func (c *Client) newWindow(ctx context.Context, sessionID string, opts StartOpti
 	return Started{SessionID: sessionID, WindowID: out.WindowID, BlockID: out.BlockIDs[0]}, nil
 }
 
+// OpenLayer runs a command in a new floating layer at the front of a window,
+// focused. The layer closes with its block when the command exits.
+func (c *Client) OpenLayer(ctx context.Context, opts LayerOptions) (Layer, error) {
+	options := map[string]any{"command": opts.Command}
+	if opts.Dir != "" {
+		options["cwd"] = opts.Dir
+	}
+	// The block is this call's until the CLI exits, which lets it go, so
+	// the app sizes it as soon as the call returns.
+	args := map[string]any{
+		"window_id": opts.WindowID,
+		"bounds":    opts.Bounds,
+		"focus":     true,
+		"layout":    map[string]any{"block": map[string]any{"flavor": "com.superlogical.terminal.shell", "options": options}},
+	}
+	var out struct {
+		LayerID  string   `json:"layer_id"`
+		BlockIDs []string `json:"block_ids"`
+	}
+	if err := c.call(ctx, opts.SessionID, "session.new_layer", args, &out); err != nil {
+		return Layer{}, err
+	}
+	if len(out.BlockIDs) != 1 {
+		return Layer{}, fmt.Errorf("rex session.new_layer: made %d blocks, want 1", len(out.BlockIDs))
+	}
+	return Layer{ID: out.LayerID, BlockID: out.BlockIDs[0]}, nil
+}
+
 // CloseBlock closes a block, ending its program. Rex closes the window too
 // when it was the window's last block.
 func (c *Client) CloseBlock(ctx context.Context, sessionID, blockID string) error {

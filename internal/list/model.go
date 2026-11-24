@@ -3,6 +3,8 @@
 package list
 
 import (
+	"fmt"
+	"os/exec"
 	"slices"
 	"strings"
 	"time"
@@ -131,6 +133,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.press(msg)
 	case doneMsg:
 		m.finish(msg)
+	case formMsg:
+		cmd = m.runForm(msg)
 	}
 	m.keepSelection()
 	m.scroll()
@@ -197,7 +201,7 @@ func (m *Model) perform(a action) tea.Cmd {
 			m.setExpanded(!m.expanded[section])
 		}
 	case actionNew:
-		return m.run("starting", Actions.New, afterAction{})
+		return m.openForm()
 	case actionFilter:
 		m.filtering = true
 	case actionEscape:
@@ -314,6 +318,39 @@ func (m *Model) run(doing string, call func(Actions) error, then afterAction) te
 	m.busy, m.notice = doing, ""
 	actions := m.actions
 	return func() tea.Msg { return doneMsg{err: call(actions), then: then} }
+}
+
+// formMsg is what Actions.New returned.
+type formMsg struct {
+	cmd *exec.Cmd
+	err error
+}
+
+func (m *Model) openForm() tea.Cmd {
+	if m.busy != "" {
+		return nil
+	}
+	m.busy, m.notice = "opening the form", ""
+	actions := m.actions
+	return func() tea.Msg {
+		cmd, err := actions.New()
+		return formMsg{cmd: cmd, err: err}
+	}
+}
+
+// runForm hands the terminal to the form when it has to run here, and
+// takes it back when the form exits.
+func (m *Model) runForm(msg formMsg) tea.Cmd {
+	if msg.err != nil || msg.cmd == nil {
+		m.finish(doneMsg{err: msg.err})
+		return nil
+	}
+	return tea.ExecProcess(msg.cmd, func(err error) tea.Msg {
+		if err != nil {
+			err = fmt.Errorf("the new-agent form: %w", err)
+		}
+		return doneMsg{err: err}
+	})
 }
 
 func (m *Model) finish(msg doneMsg) {

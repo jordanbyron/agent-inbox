@@ -267,6 +267,27 @@ func TestStart(t *testing.T) {
 	})
 }
 
+func TestOpenLayer(t *testing.T) {
+	client, calls := fakeRex(t, reply{match: "session.new_layer", file: "session_new_layer.json"})
+
+	layer, err := client.OpenLayer(t.Context(), rex.LayerOptions{
+		SessionID: testSession,
+		WindowID:  testWindow,
+		Command:   []string{"/usr/local/bin/agent-inbox", "new"},
+		Dir:       "/tmp/repo",
+		Bounds:    [4]float64{0.1, 0.1, 0.8, 0.8},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, rex.Layer{
+		ID:      "layer:01a20b81-ef81-75b1-a06a-83db70920d24",
+		BlockID: "block:01a20b81-ef76-7c8e-b5a0-6af771912eb4",
+	}, layer)
+	require.Equal(t, []string{"api call -s " + testSession + ` session.new_layer {"bounds":[0.1,0.1,0.8,0.8],"focus":true,` +
+		`"layout":{"block":{"flavor":"com.superlogical.terminal.shell","options":{"command":["/usr/local/bin/agent-inbox","new"],` +
+		`"cwd":"/tmp/repo"}}},"window_id":"` + testWindow + `"}`}, calls())
+}
+
 func TestClose(t *testing.T) {
 	client, calls := fakeRex(t, reply{match: "block.close"}, reply{match: "session.close_window"})
 

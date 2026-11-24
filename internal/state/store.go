@@ -21,6 +21,11 @@ func New(dir string) *Store {
 	return &Store{dir: dir}
 }
 
+// Dir returns the state directory.
+func (s *Store) Dir() string {
+	return s.dir
+}
+
 // Read returns state.json as last written, taking no lock. A missing file
 // is an empty state.
 func (s *Store) Read() (*State, error) {

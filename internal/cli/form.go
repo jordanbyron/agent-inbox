@@ -1,28 +1,44 @@
 package cli
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
-	"github.com/jordanbyron/agent-inbox/internal/config"
 	"github.com/jordanbyron/agent-inbox/internal/form"
 	"github.com/jordanbyron/agent-inbox/internal/images"
+	"github.com/jordanbyron/agent-inbox/internal/recipe"
+	"github.com/jordanbyron/agent-inbox/internal/rex"
+	"github.com/jordanbyron/agent-inbox/internal/verbs"
 	"github.com/jordanbyron/agent-inbox/internal/worktree"
 )
 
-func newFormCommand() *cobra.Command {
+func newFormCommand(open inboxOpener) *cobra.Command {
 	return &cobra.Command{
 		Use:    "form",
 		Short:  "Show the new-agent form and print what was chosen as JSON",
 		Hidden: true,
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			opts, err := formOptions(cmd)
+			inbox, err := open(cmd.Context())
+			if err != nil {
+				return err
+			}
+			req := verbs.StartRequest{Dir: ".", Worktree: inbox.Config.Worktree.Default}
+			if pane, ok := rex.PaneFromEnv(inbox.Getenv); ok {
+				req.Session = pane.SessionID
+			}
+			// The JSON goes to stdout, so it can be piped while the form shows.
+			opts, err := formOptions(cmd.Context(), inbox, req, cmd.ErrOrStderr())
 			if err != nil {
 				return err
 			}
@@ -40,35 +56,98 @@ func newFormCommand() *cobra.Command {
 	}
 }
 
-func formOptions(cmd *cobra.Command) (form.Options, error) {
-	path, err := config.Path()
+// formOptions starts the form from what the request already says, so flags
+// given to new pre-fill it.
+func formOptions(ctx context.Context, inbox *verbs.Inbox, req verbs.StartRequest, output io.Writer) (form.Options, error) {
+	listed, err := inbox.Rex.Sessions(ctx)
 	if err != nil {
-		return form.Options{}, err
+		return form.Options{}, fmt.Errorf("listing Rex sessions: %w", err)
 	}
-	cfg, err := config.Load(path)
-	if err != nil {
-		return form.Options{}, err
+	var sessions []form.Session
+	current := ""
+	for _, s := range listed {
+		sessions = append(sessions, form.Session{ID: s.ID, Label: s.Label})
+		if req.Session != "" && (s.ID == req.Session || s.Label == req.Session) {
+			current = s.ID
+		}
 	}
-	home, err := os.UserHomeDir()
+	dir, err := filepath.Abs(req.Dir)
 	if err != nil {
-		return form.Options{}, fmt.Errorf("finding the home directory: %w", err)
-	}
-	dir, err := os.Getwd()
-	if err != nil {
-		return form.Options{}, fmt.Errorf("finding the current directory: %w", err)
+		return form.Options{}, fmt.Errorf("reading the directory: %w", err)
 	}
 	return form.Options{
-		Recipes:         cfg.Recipes,
+		Recipes:         preferred(inbox.Config.Recipes, req),
+		Sessions:        sessions,
+		CurrentSession:  current,
 		Dir:             dir,
-		WorktreeDefault: cfg.Worktree.Default,
+		WorktreeDefault: req.Worktree,
 		InRepo: func(dir string) bool {
-			return worktree.InRepo(cmd.Context(), worktree.ExecGit{}, dir)
+			return worktree.InRepo(ctx, inbox.Git, dir)
 		},
-		Home:      home,
+		Home:      inbox.Home,
 		Now:       time.Now,
 		Clipboard: images.Pasteboard{},
-		ImageDir:  filepath.Join(filepath.Dir(path), "images"),
-		// The JSON goes to stdout, so it can be piped while the form shows.
-		Output: cmd.ErrOrStderr(),
+		ImageDir:  filepath.Join(inbox.Store.Dir(), "images"),
+		Output:    output,
 	}, nil
+}
+
+// preferred puts the harness the request names first, and its model,
+// effort and permissions first among their choices, since the form starts
+// on whatever comes first.
+func preferred(recipes recipe.Set, req verbs.StartRequest) recipe.Set {
+	out := slices.Clone(recipes)
+	if i := slices.IndexFunc(out, func(r recipe.Recipe) bool { return r.Name == req.Harness }); i > 0 {
+		chosen := out[i]
+		out = slices.Insert(slices.Delete(out, i, i+1), 0, chosen)
+	}
+	if len(out) == 0 {
+		return out
+	}
+	choices := &out[0].Choices
+	choices.Model = first(choices.Model, req.Model)
+	choices.Effort = first(choices.Effort, req.Effort)
+	choices.Permissions = first(choices.Permissions, req.Permissions)
+	return out
+}
+
+func first(values []string, value string) []string {
+	i := slices.Index(values, value)
+	if i <= 0 {
+		return values
+	}
+	return slices.Insert(slices.Delete(slices.Clone(values), i, i+1), 0, value)
+}
+
+// fromForm is what to start: the form's choices, with the name and --show
+// from the flags when the form left them unset.
+func fromForm(result form.Result, flags verbs.StartRequest) verbs.StartRequest {
+	req := verbs.StartRequest{
+		Prompt:      result.Prompt,
+		Harness:     result.Harness,
+		Name:        result.Name,
+		Dir:         result.Dir,
+		Session:     result.Session,
+		Model:       result.Model,
+		Effort:      result.Effort,
+		Permissions: result.Permissions,
+		Worktree:    result.Worktree,
+		Show:        result.ShowTab || flags.Show,
+	}
+	if req.Name == "" {
+		req.Name = flags.Name
+	}
+	return req
+}
+
+func terminalIn(cmd *cobra.Command) (*os.File, bool) {
+	in, ok := cmd.InOrStdin().(*os.File)
+	return in, ok && term.IsTerminal(in.Fd())
+}
+
+// holdOnError keeps a failed start on screen until Enter. The form may be
+// in a Rex layer, which closes the moment this program exits.
+func holdOnError(cmd *cobra.Command, in *os.File, err error) {
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "agent-inbox: %v\npress Enter to close", err)
+	_, _ = bufio.NewReader(in).ReadString('\n')
 }

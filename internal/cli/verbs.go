@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
+	"github.com/jordanbyron/agent-inbox/internal/form"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
@@ -61,6 +61,10 @@ func newInbox(srv server) (*verbs.Inbox, error) {
 	if err != nil {
 		return nil, fmt.Errorf("finding the home directory: %w", err)
 	}
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("finding this binary: %w", err)
+	}
 	store := state.New(srv.dir)
 	return &verbs.Inbox{
 		Store:  store,
@@ -79,6 +83,7 @@ func newInbox(srv server) (*verbs.Inbox, error) {
 		},
 		Getenv: os.Getenv,
 		Home:   home,
+		Form:   []string{exe, "new"},
 	}, nil
 }
 
@@ -86,11 +91,12 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 	var req verbs.StartRequest
 	cmd := &cobra.Command{
 		Use:   "new",
-		Short: "Start an agent in a new Rex tab",
+		Short: "Start an agent in a new Rex tab; without --prompt, choose in the form",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if req.Prompt == "" {
-				return errors.New("new needs --prompt until the form is built")
+			in, onTerminal := terminalIn(cmd)
+			if req.Prompt == "" && !onTerminal {
+				return errors.New("new needs --prompt when it is not on a terminal")
 			}
 			inbox, err := open(cmd.Context())
 			if err != nil {
@@ -104,11 +110,22 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 					req.Session = pane.SessionID
 				}
 			}
-			a, err := inbox.Start(cmd.Context(), req)
-			if a.Key != "" {
-				say(cmd, "started %s (%s)", a.Name, a.Key)
+			if req.Prompt != "" {
+				return start(cmd, inbox, req)
 			}
-			return err
+			opts, err := formOptions(cmd.Context(), inbox, req, cmd.OutOrStdout())
+			if err != nil {
+				return err
+			}
+			result, ok, err := form.Run(cmd.Context(), opts)
+			if err != nil || !ok {
+				return err
+			}
+			if err := start(cmd, inbox, fromForm(result, req)); err != nil {
+				holdOnError(cmd, in, err)
+				return err
+			}
+			return nil
 		},
 	}
 	flags := cmd.Flags()
@@ -123,6 +140,14 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 	flags.BoolVar(&req.Worktree, "worktree", true, "make a worktree when the directory is in a git repository (default from the config)")
 	flags.BoolVar(&req.Show, "show", false, "show the new tab")
 	return cmd
+}
+
+func start(cmd *cobra.Command, inbox *verbs.Inbox, req verbs.StartRequest) error {
+	a, err := inbox.Start(cmd.Context(), req)
+	if a.Key != "" {
+		say(cmd, "started %s (%s)", a.Name, a.Key)
+	}
+	return err
 }
 
 func newSnoozeCommand(open inboxOpener) *cobra.Command {
@@ -253,8 +278,8 @@ func newDeleteCommand(open inboxOpener) *cobra.Command {
 // confirm asks on a terminal. Anywhere else there is no one to answer, so
 // it refuses rather than guess.
 func confirm(cmd *cobra.Command, question string) error {
-	in, ok := cmd.InOrStdin().(*os.File)
-	if !ok || !term.IsTerminal(in.Fd()) {
+	in, ok := terminalIn(cmd)
+	if !ok {
 		return errors.New("not on a terminal: pass --yes to delete without asking")
 	}
 	_, _ = fmt.Fprint(cmd.ErrOrStderr(), question)

@@ -2,6 +2,7 @@ package list
 
 import (
 	"fmt"
+	"os/exec"
 	"time"
 )
 
@@ -20,7 +21,10 @@ type Actions interface {
 	// Link links a pull request by hand, and an empty url clears the link.
 	Link(key, url string) error
 	Delete(key string) error
-	New() error
+	// New opens the new-agent form. It returns nil when the form opened
+	// somewhere else, such as a Rex layer, and otherwise the command that
+	// runs it, which the list runs in its own terminal while it waits.
+	New() (*exec.Cmd, error)
 	OpenPullRequest(url string) error
 	CopyPullRequest(url string) error
 }
@@ -45,6 +49,6 @@ func (notWired) TogglePin(string) error         { return errNotWired("pin") }
 func (notWired) Alias(string, string) error     { return errNotWired("alias") }
 func (notWired) Link(string, string) error      { return errNotWired("link") }
 func (notWired) Delete(string) error            { return errNotWired("delete") }
-func (notWired) New() error                     { return errNotWired("new") }
+func (notWired) New() (*exec.Cmd, error)        { return nil, errNotWired("new") }
 func (notWired) OpenPullRequest(string) error   { return errNotWired("opening a pull request") }
 func (notWired) CopyPullRequest(string) error   { return errNotWired("copying a pull request") }

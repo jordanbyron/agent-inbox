@@ -35,6 +35,7 @@ type Fake struct {
 	closedBlocks  []string
 	closedWindows []string
 	shown         []string
+	layers        []rex.LayerOptions
 }
 
 type session struct {
@@ -403,6 +404,33 @@ func (f *Fake) Start(ctx context.Context, opts rex.StartOptions) (rex.Started, e
 		f.activate(s, w.id)
 	}
 	return rex.Started{SessionID: s.id, WindowID: w.id, BlockID: b.id}, nil
+}
+
+// OpenLayer records opts and adds a block for the layer to the window.
+func (f *Fake) OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error) {
+	if err := f.reachable(ctx); err != nil {
+		return rex.Layer{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, err := f.session(opts.SessionID)
+	if err != nil {
+		return rex.Layer{}, err
+	}
+	w, err := s.window(opts.WindowID)
+	if err != nil {
+		return rex.Layer{}, err
+	}
+	f.layers = append(f.layers, opts)
+	b := f.addBlock(s, w, "", opts.Dir)
+	return rex.Layer{ID: f.newID("layer"), BlockID: b.id}, nil
+}
+
+// Layers returns the options of every OpenLayer call, in order.
+func (f *Fake) Layers() []rex.LayerOptions {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.layers)
 }
 
 // CloseBlock records the request and closes the block.

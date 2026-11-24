@@ -2,6 +2,7 @@ package list_test
 
 import (
 	"errors"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -265,6 +266,24 @@ func TestASlowActionRunsBehindTheScreen(t *testing.T) {
 	s.send(<-result)
 	require.Equal(t, []string{"settle a7f3c2"}, s.actions.calls)
 	require.Contains(t, s.header(), "settled — u brings it back")
+}
+
+func TestNewRunsTheFormHereOnlyWhenItHasTo(t *testing.T) {
+	t.Run("a form opened elsewhere leaves the list as it was", func(t *testing.T) {
+		s := tall(t).press("n")
+		require.Equal(t, []string{"new"}, s.actions.calls)
+		require.Nil(t, s.last)
+		require.NotContains(t, s.header(), "opening the form")
+	})
+
+	t.Run("a form to run here takes the terminal until it exits", func(t *testing.T) {
+		s := tall(t)
+		s.actions.form = exec.Command("true")
+		s.send(keyPress("n"))
+		s.send(s.last())
+		require.NotNil(t, s.last, "the list hands the form a command to run")
+		require.Contains(t, s.header(), "opening the form…")
+	})
 }
 
 func TestAFinishedActionReadsTheSnapshotAgain(t *testing.T) {

@@ -15,3 +15,9 @@ func NewWithInbox(inbox *verbs.Inbox) *cobra.Command {
 	root.AddCommand(verbCommands(func(context.Context) (*verbs.Inbox, error) { return inbox, nil })...)
 	return root
 }
+
+// FormOptions is how new opens the form for a request its flags made.
+var FormOptions = formOptions
+
+// FromForm is how new turns the form's result back into a request.
+var FromForm = fromForm

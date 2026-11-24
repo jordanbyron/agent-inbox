@@ -22,6 +22,7 @@ type rexAPI interface {
 	Apps(ctx context.Context) ([]rex.App, error)
 	ShownWindows(ctx context.Context) ([]rex.ShownWindow, error)
 	Start(ctx context.Context, opts rex.StartOptions) (rex.Started, error)
+	OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error)
 	CloseBlock(ctx context.Context, sessionID, blockID string) error
 	CloseWindow(ctx context.Context, sessionID, windowID string) error
 	Show(ctx context.Context, sessionID, blockID string) error
@@ -166,6 +167,24 @@ func TestFakeRecordsRequests(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, view.Windows)
 	require.Empty(t, view.ActiveWindowID)
+}
+
+func TestFakeOpenLayer(t *testing.T) {
+	fake := rextest.New(rex.Server{})
+	work := fake.AddSession("work")
+	window, err := fake.AddWindow(work, "inbox")
+	require.NoError(t, err)
+	opts := rex.LayerOptions{SessionID: work, WindowID: window, Command: []string{"agent-inbox", "new"}, Dir: "/tmp"}
+
+	layer, err := fake.OpenLayer(t.Context(), opts)
+
+	require.NoError(t, err)
+	require.Equal(t, []rex.LayerOptions{opts}, fake.Layers())
+	view, err := fake.View(t.Context(), work)
+	require.NoError(t, err)
+	require.Equal(t, layer.BlockID, view.Windows[0].Blocks[0].ID)
+	_, err = fake.OpenLayer(t.Context(), rex.LayerOptions{SessionID: work, WindowID: "window:gone"})
+	require.ErrorIs(t, err, rex.ErrNotFound)
 }
 
 func TestFakeRemoveSession(t *testing.T) {

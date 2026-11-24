@@ -117,3 +117,20 @@ type Started struct {
 	WindowID  string
 	BlockID   string
 }
+
+// LayerOptions says where and how Client.OpenLayer runs a command.
+type LayerOptions struct {
+	SessionID string
+	WindowID  string
+	Command   []string
+	Dir       string
+	// Bounds is the layer's x, y, width and height, each a fraction of the
+	// window's size.
+	Bounds [4]float64
+}
+
+// Layer is where Client.OpenLayer put the command.
+type Layer struct {
+	ID      string
+	BlockID string
+}
