@@ -184,3 +184,39 @@ func TestFakeRemoveSession(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, sessions)
 }
+
+func TestFakeAppsJoinAndLeave(t *testing.T) {
+	fake := rextest.New(rex.Server{})
+	work := fake.AddSession("work")
+	events, _ := fake.Events(t.Context())
+
+	app := fake.AddApp("studio", work)
+	require.Equal(t, rex.Event{Type: rex.EventClientJoined, ClientID: app, ClientKind: "app"}, next(t, events))
+	require.Equal(t, rex.Event{Type: rex.EventClientConnected, SessionID: work, ClientID: app}, next(t, events))
+
+	fake.RemoveApp(app)
+	require.Equal(t, rex.Event{Type: rex.EventClientDisconnected, SessionID: work, ClientID: app}, next(t, events))
+	require.Equal(t, rex.Event{Type: rex.EventClientLeft, ClientID: app}, next(t, events))
+	apps, err := fake.Apps(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, apps)
+}
+
+func TestFakeShutdown(t *testing.T) {
+	fake := rextest.New(rex.Server{HostID: "host"})
+	events, errs := fake.Events(t.Context())
+
+	fake.Shutdown()
+	for range events {
+	}
+	require.ErrorIs(t, <-errs, rex.ErrStreamEnded)
+	_, err := fake.Server(t.Context())
+	require.ErrorIs(t, err, rextest.ErrDown)
+	_, err = fake.Sessions(t.Context())
+	require.ErrorIs(t, err, rextest.ErrDown)
+
+	late, lateErrs := fake.Events(t.Context())
+	for range late {
+	}
+	require.ErrorIs(t, <-lateErrs, rex.ErrStreamEnded)
+}

@@ -29,15 +29,22 @@ func TestEventsDecodesWhatRexPrints(t *testing.T) {
 		agent   = "block:01a20b3e-5241-75e7-b413-68522863a41c"
 		other   = "session:01a20b3e-a2e5-7530-95f5-3a2db6a9092d"
 		cleared = "block:01a20b3a-8425-7d23-ae32-728b6ca45f51"
+
+		cli          = "client:01a20b3a-e1ca-7e6f-8c1a-3b8be23d2a19"
+		cliInSession = "client:01a20b3b-0300-760a-a1e9-b3462d9ce193"
 	)
 	for i := range got {
 		got[i].Record.UpdatedAt = time.Time{}
 	}
 	forty := 40
 	require.Equal(t, []rex.Event{
+		{Type: rex.EventClientJoined, ClientID: cli, ClientKind: "cli"},
+		{Type: rex.EventClientLeft, ClientID: cli},
+		{Type: rex.EventClientConnected, SessionID: session, ClientID: cliInSession},
 		{Type: rex.EventBlockCreated, SessionID: session, BlockID: zsh},
 		{Type: rex.EventWindowCreated, SessionID: session, WindowID: zshWin, Label: "zsh"},
 		{Type: rex.EventViewChanged, SessionID: session, Revision: 16},
+		{Type: rex.EventClientDisconnected, SessionID: session, ClientID: cliInSession},
 		{Type: rex.EventProgramExited, SessionID: session, BlockID: exited, ExitCode: 3},
 		{Type: rex.EventBlockClosed, SessionID: session, BlockID: exited},
 		{Type: rex.EventWindowClosed, SessionID: session, WindowID: "window:01a20b3b-2baf-7849-886b-a3bc4fdd3945"},

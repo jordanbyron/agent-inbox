@@ -3,6 +3,7 @@ package rextest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -14,6 +15,9 @@ import (
 // is off.
 const RemoteControlRefusal = "Rex.app is not accepting actions. Turn on Remote Control in its Settings under Rex Server."
 
+// ErrDown is what every call returns after Shutdown.
+var ErrDown = errors.New("rextest: the server is not running")
+
 // Fake has the same methods as rex.Client, backed by sessions, windows and
 // blocks a test adds. Changes made through either kind of method come out
 // of every stream Events returned, as the real server's events would.
@@ -23,6 +27,7 @@ type Fake struct {
 	sessions      []*session
 	apps          []rex.App
 	remoteOff     bool
+	down          bool
 	captures      map[string]string
 	lastID        int
 	streams       []*stream
@@ -180,7 +185,27 @@ func (f *Fake) AddApp(label string, sessionIDs ...string) string {
 	defer f.mu.Unlock()
 	app := rex.App{ClientID: f.newID("client"), Label: label, SessionIDs: sessionIDs}
 	f.apps = append(f.apps, app)
+	f.emit(rex.Event{Type: rex.EventClientJoined, ClientID: app.ClientID, ClientKind: "app"})
+	for _, sessionID := range sessionIDs {
+		f.emit(rex.Event{Type: rex.EventClientConnected, SessionID: sessionID, ClientID: app.ClientID})
+	}
 	return app.ClientID
+}
+
+// RemoveApp disconnects an app AddApp connected.
+func (f *Fake) RemoveApp(clientID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	i := slices.IndexFunc(f.apps, func(app rex.App) bool { return app.ClientID == clientID })
+	if i < 0 {
+		return
+	}
+	app := f.apps[i]
+	f.apps = slices.Delete(f.apps, i, i+1)
+	for _, sessionID := range app.SessionIDs {
+		f.emit(rex.Event{Type: rex.EventClientDisconnected, SessionID: sessionID, ClientID: clientID})
+	}
+	f.emit(rex.Event{Type: rex.EventClientLeft, ClientID: clientID})
 }
 
 // SetRemoteControl turns the apps' Remote Control setting on or off. While
@@ -203,6 +228,18 @@ func (f *Fake) SetCapture(blockID, text string) {
 func (f *Fake) GoAway() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	for _, st := range f.streams {
+		st.end(rex.ErrStreamEnded)
+	}
+	f.streams = nil
+}
+
+// Shutdown stops the server: every open stream ends as GoAway ends it, and
+// every call after fails as one to a server that is not running would.
+func (f *Fake) Shutdown() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.down = true
 	for _, st := range f.streams {
 		st.end(rex.ErrStreamEnded)
 	}
@@ -239,7 +276,7 @@ func (f *Fake) Shown() []string {
 
 // Server returns the identity New was given.
 func (f *Fake) Server(ctx context.Context) (rex.Server, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return rex.Server{}, err
 	}
 	return f.server, nil
@@ -247,7 +284,7 @@ func (f *Fake) Server(ctx context.Context) (rex.Server, error) {
 
 // Sessions lists the sessions in the order they were added.
 func (f *Fake) Sessions(ctx context.Context) ([]rex.Session, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return nil, err
 	}
 	f.mu.Lock()
@@ -261,7 +298,7 @@ func (f *Fake) Sessions(ctx context.Context) ([]rex.Session, error) {
 
 // View returns a session's windows and blocks.
 func (f *Fake) View(ctx context.Context, sessionID string) (rex.View, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return rex.View{}, err
 	}
 	f.mu.Lock()
@@ -286,7 +323,7 @@ func (f *Fake) View(ctx context.Context, sessionID string) (rex.View, error) {
 
 // Status returns a block's records in the order they were first set.
 func (f *Fake) Status(ctx context.Context, sessionID, blockID string) ([]rex.StatusRecord, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return nil, err
 	}
 	f.mu.Lock()
@@ -301,7 +338,7 @@ func (f *Fake) Status(ctx context.Context, sessionID, blockID string) ([]rex.Sta
 // Process reports every block as alive, since a block closes when its
 // program exits; Dir is the one Start was given, if any.
 func (f *Fake) Process(ctx context.Context, sessionID, blockID string) (rex.Process, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return rex.Process{}, err
 	}
 	f.mu.Lock()
@@ -315,7 +352,7 @@ func (f *Fake) Process(ctx context.Context, sessionID, blockID string) (rex.Proc
 
 // Apps lists the apps AddApp connected.
 func (f *Fake) Apps(ctx context.Context) ([]rex.App, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return nil, err
 	}
 	f.mu.Lock()
@@ -325,7 +362,7 @@ func (f *Fake) Apps(ctx context.Context) ([]rex.App, error) {
 
 // ShownWindows returns each app's session's active window.
 func (f *Fake) ShownWindows(ctx context.Context) ([]rex.ShownWindow, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return nil, err
 	}
 	f.mu.Lock()
@@ -345,7 +382,7 @@ func (f *Fake) ShownWindows(ctx context.Context) ([]rex.ShownWindow, error) {
 
 // Start records opts and adds the window and block they describe.
 func (f *Fake) Start(ctx context.Context, opts rex.StartOptions) (rex.Started, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return rex.Started{}, err
 	}
 	f.mu.Lock()
@@ -370,7 +407,7 @@ func (f *Fake) Start(ctx context.Context, opts rex.StartOptions) (rex.Started, e
 
 // CloseBlock records the request and closes the block.
 func (f *Fake) CloseBlock(ctx context.Context, sessionID, blockID string) error {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return err
 	}
 	f.mu.Lock()
@@ -386,7 +423,7 @@ func (f *Fake) CloseBlock(ctx context.Context, sessionID, blockID string) error 
 
 // CloseWindow records the request and closes the window and its blocks.
 func (f *Fake) CloseWindow(ctx context.Context, sessionID, windowID string) error {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return err
 	}
 	f.mu.Lock()
@@ -407,7 +444,7 @@ func (f *Fake) CloseWindow(ctx context.Context, sessionID, windowID string) erro
 // Show records the request and makes the block's window active. With Remote
 // Control off and an app attached to the session, it then fails as Rex does.
 func (f *Fake) Show(ctx context.Context, sessionID, blockID string) error {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return err
 	}
 	f.mu.Lock()
@@ -428,7 +465,7 @@ func (f *Fake) Show(ctx context.Context, sessionID, blockID string) error {
 
 // Capture returns what SetCapture set for the block.
 func (f *Fake) Capture(ctx context.Context, sessionID, blockID string) (string, error) {
-	if err := ctx.Err(); err != nil {
+	if err := f.reachable(ctx); err != nil {
 		return "", err
 	}
 	f.mu.Lock()
@@ -440,13 +477,30 @@ func (f *Fake) Capture(ctx context.Context, sessionID, blockID string) (string, 
 }
 
 // Events returns a stream of every change from now on, which ends when ctx
-// is canceled or GoAway is called, as rex.Client's does.
+// is canceled or GoAway or Shutdown is called, as rex.Client's does.
 func (f *Fake) Events(ctx context.Context) (<-chan rex.Event, <-chan error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	st := newStream(ctx)
+	if f.down {
+		st.end(rex.ErrStreamEnded)
+		return st.events, st.errs
+	}
 	f.streams = append(f.streams, st)
 	return st.events, st.errs
+}
+
+// reachable is the error a call gets before it reaches the server.
+func (f *Fake) reachable(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.down {
+		return ErrDown
+	}
+	return nil
 }
 
 func (f *Fake) emit(event rex.Event) {
