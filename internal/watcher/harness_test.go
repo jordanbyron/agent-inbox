@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -374,10 +373,8 @@ func newRepo(t *testing.T, branch string) string {
 		{"-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--allow-empty", "-m", "first"},
 		{"checkout", "--quiet", "-b", branch},
 	} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "git %v: %s", args, out)
+		_, err := worktree.ExecGit{}.Run(t.Context(), dir, args...)
+		require.NoError(t, err)
 	}
 	resolved, err := filepath.EvalSymlinks(dir)
 	require.NoError(t, err)

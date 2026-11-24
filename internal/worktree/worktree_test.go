@@ -362,3 +362,16 @@ func run(t *testing.T, dir string, args ...string) string {
 	require.NoError(t, err)
 	return out
 }
+
+func TestGitIgnoresARepositoryNamedByTheEnvironment(t *testing.T) {
+	elsewhere := t.TempDir()
+	t.Setenv("GIT_DIR", filepath.Join(elsewhere, ".git"))
+	t.Setenv("GIT_WORK_TREE", elsewhere)
+	dir := t.TempDir()
+
+	_, err := worktree.ExecGit{}.Run(t.Context(), dir, "init", "--quiet", "-b", "main")
+
+	require.NoError(t, err)
+	require.DirExists(t, filepath.Join(dir, ".git"))
+	require.NoDirExists(t, filepath.Join(elsewhere, ".git"))
+}
