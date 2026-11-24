@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/x/term"
@@ -18,6 +19,7 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/images"
 	"github.com/jordanbyron/agent-inbox/internal/recipe"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
+	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/verbs"
 	"github.com/jordanbyron/agent-inbox/internal/worktree"
 )
@@ -84,12 +86,42 @@ func formOptions(ctx context.Context, inbox *verbs.Inbox, req verbs.StartRequest
 		InRepo: func(dir string) bool {
 			return worktree.InRepo(ctx, inbox.Git, dir)
 		},
-		Home:      inbox.Home,
-		Now:       time.Now,
-		Clipboard: images.Pasteboard{},
-		ImageDir:  filepath.Join(inbox.Store.Dir(), "images"),
-		Output:    output,
+		Home:       inbox.Home,
+		Now:        time.Now,
+		Clipboard:  images.Pasteboard{},
+		ImageDir:   filepath.Join(inbox.Store.Dir(), "images"),
+		Output:     output,
+		RecentDirs: recentDirs(ctx, inbox),
 	}, nil
+}
+
+// recentDirs lists where agents were started, most recent first. An agent
+// in a worktree counts as its repository, since that is what was chosen.
+func recentDirs(ctx context.Context, inbox *verbs.Inbox) []string {
+	st, err := inbox.Store.Read()
+	if err != nil {
+		return nil
+	}
+	records := make([]state.Record, 0, len(st.Records))
+	for _, r := range st.Records {
+		records = append(records, r)
+	}
+	slices.SortFunc(records, func(a, b state.Record) int { return b.Began.Compare(a.Began) })
+	var dirs []string
+	for _, r := range records {
+		dir := r.Dir
+		if r.Worktree != "" {
+			common, err := inbox.Git.Run(ctx, r.Worktree, "rev-parse", "--path-format=absolute", "--git-common-dir")
+			if err != nil {
+				continue
+			}
+			dir = filepath.Dir(strings.TrimSpace(common))
+		}
+		if dir != "" && !slices.Contains(dirs, dir) {
+			dirs = append(dirs, dir)
+		}
+	}
+	return dirs
 }
 
 // preferred puts the harness the request names first, and its model,
