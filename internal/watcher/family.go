@@ -78,20 +78,24 @@ func familySection(root triage.Section, members []triage.Section) triage.Section
 }
 
 // familyAgent is the family as auto-settle sees it: at work while any
-// member with a block is, in error while any such member is, owning every
-// member's pull requests, and dated from the root.
+// member with a block is at work or still starting, in error while any
+// such member is, owning every member's pull requests but those a member
+// only mentioned, and dated from the root.
 func familyAgent(root triage.Agent, children []triage.Agent) triage.Agent {
 	fam := root
 	fam.PullRequests = slices.Clone(root.PullRequests)
 	for _, c := range children {
 		switch {
 		case !c.HasBlock:
-		case c.Status == triage.StatusWorking:
+		case c.Status == triage.StatusWorking, c.Status == triage.StatusStarting:
 			fam.Status = triage.StatusWorking
 		case c.Status == triage.StatusError && fam.Status != triage.StatusWorking:
 			fam.Status = triage.StatusError
 		}
 		for _, pr := range c.PullRequests {
+			if pr.ResolvedBefore(c.Began) {
+				continue
+			}
 			if !slices.ContainsFunc(fam.PullRequests, func(own triage.PullRequest) bool { return own.URL == pr.URL }) {
 				fam.PullRequests = append(fam.PullRequests, pr)
 			}

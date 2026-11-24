@@ -47,6 +47,11 @@ func TestFamilyAgent(t *testing.T) {
 	pr := func(n string) triage.PullRequest {
 		return triage.PullRequest{URL: "https://github.com/o/r/pull/" + n, Known: true}
 	}
+	resolved := func(n string, at time.Time) triage.PullRequest {
+		p := pr(n)
+		p.ResolvedAt = at
+		return p
+	}
 	root := triage.Agent{Status: triage.StatusIdle, HasBlock: true, Began: began, PullRequests: []triage.PullRequest{pr("1")}}
 	cases := []struct {
 		name     string
@@ -72,6 +77,21 @@ func TestFamilyAgent(t *testing.T) {
 			children: []triage.Agent{{Status: triage.StatusError, HasBlock: true}, {Status: triage.StatusWorking, HasBlock: true}},
 			status:   triage.StatusWorking,
 			prs:      []triage.PullRequest{pr("1")},
+		},
+		{
+			name:     "a child that has reported nothing yet keeps the family at work",
+			children: []triage.Agent{{Status: triage.StatusStarting, HasBlock: true}},
+			status:   triage.StatusWorking,
+			prs:      []triage.PullRequest{pr("1")},
+		},
+		{
+			name: "a pull request resolved before the child began is its mention, not the family's",
+			children: []triage.Agent{{
+				Status: triage.StatusIdle, HasBlock: true, Began: began.Add(time.Hour),
+				PullRequests: []triage.PullRequest{resolved("3", began.Add(30*time.Minute)), resolved("4", began.Add(2*time.Hour))},
+			}},
+			status: triage.StatusIdle,
+			prs:    []triage.PullRequest{pr("1"), resolved("4", began.Add(2*time.Hour))},
 		},
 		{
 			name:     "a closed child's last status holds nothing, but its pull requests count",
