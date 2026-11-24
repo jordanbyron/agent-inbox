@@ -16,6 +16,7 @@ func New() *cobra.Command {
 	}
 	root.AddCommand(newVersionCommand(), newListCommand())
 	root.AddCommand(newFormCommand())
+	root.AddCommand(verbCommands(openInbox)...)
 	return root
 }
 
