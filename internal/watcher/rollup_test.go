@@ -64,10 +64,18 @@ func TestRollUp(t *testing.T) {
 		{
 			name: "the root needing you speaks before a child that does",
 			records: []rex.StatusRecord{
-				{ID: "a", State: "error", Msg: "child failed"},
+				{ID: "a", State: "blocked", Kind: "question", Msg: "which branch?"},
 				{State: "blocked", Kind: "auth", Msg: "log in"},
 			},
 			want: watcher.Rolled{Status: triage.StatusBlocked, Kind: "auth", Msg: "log in"},
+		},
+		{
+			name: "an error outranks a blocked root, since error is never auto-settled",
+			records: []rex.StatusRecord{
+				{ID: "a", State: "error", Msg: "child failed"},
+				{State: "blocked", Kind: "auth", Msg: "log in"},
+			},
+			want: watcher.Rolled{Status: triage.StatusError, Msg: "child failed"},
 		},
 		{
 			name:    "children only, all done, is still starting",

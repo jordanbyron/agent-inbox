@@ -27,6 +27,10 @@ func (a agent) live() bool {
 	return a.block != nil
 }
 
+func (a agent) anyWorking() bool {
+	return a.live() && a.status.anyWorking
+}
+
 // dir is where the agent works: its record says, or else Rex does.
 func (a agent) dir() string {
 	if a.record.Dir != "" {

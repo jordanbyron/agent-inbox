@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
+	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/triage"
@@ -80,4 +81,48 @@ func TestAutoSettleNeverClosesFoundAgent(t *testing.T) {
 	require.Equal(t, state.SourceCapture, row.PullRequests[0].Source)
 	require.Empty(t, h.rex.ClosedWindows())
 	require.NotContains(t, h.log.String(), "closed a tab")
+}
+
+// A blocked root is no reason to hold a tab, but a record at work or in
+// error under it is.
+func TestAutoSettleHeldWhileAnyRecordWorksOrFails(t *testing.T) {
+	cases := []struct {
+		name   string
+		child  string
+		closes bool
+	}{
+		{name: "a finished sub-agent", child: "done", closes: true},
+		{name: "a sub-agent at work", child: "working"},
+		{name: "a sub-agent in error", child: "error"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness(t)
+			work := h.rex.AddSession("work")
+			editor, _ := h.tab(work, "")
+			tab, block := h.tab(work, "agent-inbox:a1")
+			app := h.rex.AddApp("Rex", work)
+			require.NoError(t, h.rex.SetStatus(work, block, blocked))
+			require.NoError(t, h.rex.SetStatus(work, block, rex.StatusRecord{ID: "sub", State: c.child}))
+			h.gh.set(912, ghPR{state: "OPEN"}, "")
+			h.edit(func(st *state.State) {
+				st.Records["a1"] = launched(work, "/r/app")
+				st.PullRequests["a1"] = []state.PullRequest{{URL: prURL(912), Number: 912, Source: state.SourceCapture}}
+			})
+			h.start()
+			require.NoError(t, h.rex.Display(app, work, editor))
+			h.clock.Advance(time.Second)
+			h.waitRow("a1", headline(state.PRStateOpen))
+
+			h.gh.set(912, ghPR{state: "MERGED", closedAt: t0}, "")
+			h.clock.Advance(pulls.RefreshAfter)
+			if c.closes {
+				h.waitSection("a1", settled)
+				require.Equal(t, []string{tab}, h.rex.ClosedWindows())
+				return
+			}
+			h.waitRow("a1", headline(state.PRStateMerged))
+			require.Empty(t, h.rex.ClosedWindows())
+		})
+	}
 }

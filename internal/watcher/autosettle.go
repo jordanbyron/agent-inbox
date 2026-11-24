@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ func toAutoSettle(agents []agent, st *state.State, now time.Time) []closing {
 	var out []closing
 	for _, fam := range families(agents) {
 		root := fam.root
-		if !root.launched || !root.live() {
+		if !root.launched || !root.live() || slices.ContainsFunc(fam.members(), agent.anyWorking) {
 			continue
 		}
 		entry := st.Entries[root.key]
