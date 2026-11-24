@@ -58,6 +58,23 @@ func (w *watcher) scanSession(ctx context.Context, wd *world, sessionID string) 
 	return nil
 }
 
+// rescanAll reads every session again into the world as it stands, and
+// reports whether it could.
+func (w *watcher) rescanAll(ctx context.Context) bool {
+	sessions, err := w.rex.Sessions(ctx)
+	if err != nil {
+		w.log.Warn("listing Rex sessions", "err", err)
+		return false
+	}
+	for _, s := range sessions {
+		if err := w.scanSession(ctx, w.world, s.ID); err != nil {
+			w.log.Warn("rescanning a session", "err", err)
+			return false
+		}
+	}
+	return true
+}
+
 // rescan reads a session again after an event that leaves doubt about it.
 func (w *watcher) rescan(ctx context.Context, sessionID string) {
 	if err := w.scanSession(ctx, w.world, sessionID); err != nil {

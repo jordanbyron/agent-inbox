@@ -209,3 +209,57 @@ func TestAutoSettleWaitsToHearWhatEachAppShows(t *testing.T) {
 		})
 	}
 }
+
+// restoredAgent starts a watcher on a launched agent restored after its
+// pull request merged, idle in tab old, with the app showing another tab.
+func restoredAgent(t *testing.T) (h *harness, app, work, editor, old string) {
+	h = newHarness(t)
+	work = h.rex.AddSession("work")
+	editor, _ = h.tab(work, "")
+	_, old = h.tab(work, "agent-inbox:a1")
+	app = h.rex.AddApp("Rex", work)
+	require.NoError(t, h.rex.SetStatus(work, old, idle))
+	h.gh.set(912, ghPR{state: "MERGED", closedAt: t0}, "")
+	h.edit(func(st *state.State) {
+		st.Records["a1"] = launched(work, "/r/app")
+		st.PullRequests["a1"] = []state.PullRequest{{
+			URL: prURL(912), Number: 912, State: state.PRStateMerged, ResolvedAt: t0, Source: state.SourceCapture,
+		}}
+		st.Entries["a1"] = triage.Entry{RevivedAt: t0, RevivedPRs: []string{prURL(912)}}
+	})
+	h.start()
+	require.NoError(t, h.rex.Display(app, work, editor))
+	h.waitLog(heardApp)
+	h.waitRow("a1", func(r snapshot.Row) bool { return r.RexBlock == old })
+	return h, app, work, editor, old
+}
+
+// A restore opens its new tab before it writes the state, so the watcher
+// can read the restore before it hears of the tab.
+func TestARestoreOutlivesTheCloseBeforeIt(t *testing.T) {
+	h, app, work, editor, old := restoredAgent(t)
+	require.NoError(t, h.rex.ExitBlock(work, old, 0))
+	h.rex.GoAway()
+	_, restored := h.tab(work, "agent-inbox:a1")
+	h.waitLog("reconnecting")
+
+	entry := h.state().Entries["a1"]
+	require.True(t, entry.SettledAt.IsZero(), "the restore is kept")
+	require.Equal(t, t0, entry.RevivedAt.UTC())
+
+	h.clock.Advance(time.Second)
+	h.waitLog("reconnected")
+	require.NoError(t, h.rex.Display(app, work, editor))
+	require.NoError(t, h.rex.SetStatus(work, restored, idle))
+	h.waitRow("a1", func(r snapshot.Row) bool { return r.RexBlock == restored && r.Status == triage.StatusIdle })
+	require.Empty(t, h.rex.ClosedWindows(), "the restore holds until a new pull request resolves")
+}
+
+func TestARestoredAgentWhoseTabClosesSettles(t *testing.T) {
+	h, _, work, _, old := restoredAgent(t)
+	require.NoError(t, h.rex.ExitBlock(work, old, 0))
+	h.waitRow("a1", func(r snapshot.Row) bool { return r.RexBlock == "" })
+
+	h.clock.Advance(time.Second)
+	require.Eventually(t, func() bool { return !h.state().Entries["a1"].SettledAt.IsZero() }, waitFor, time.Millisecond)
+}

@@ -267,12 +267,12 @@ func (w *watcher) enqueue(j job) {
 func (w *watcher) settle(ctx context.Context) {
 	now := w.clock.Now()
 	w.fillDirs(ctx)
-	w.record(now)
+	w.record(ctx, now)
 	if w.autoSettle(ctx, now) {
-		w.record(now)
+		w.record(ctx, now)
 	}
 	if w.reapDue(ctx, now) {
-		w.record(now)
+		w.record(ctx, now)
 	}
 	if w.notifier != nil {
 		w.notifyChanges(now)
@@ -281,7 +281,7 @@ func (w *watcher) settle(ctx context.Context) {
 }
 
 // record writes one observation of every agent in a single update.
-func (w *watcher) record(now time.Time) {
+func (w *watcher) record(ctx context.Context, now time.Time) {
 	found := w.found
 	var agents []agent
 	var obs observation
@@ -297,6 +297,9 @@ func (w *watcher) record(now time.Time) {
 	w.rec.commit(obs)
 	w.agents = agents
 	w.queueTurnEnds()
+	if len(obs.recheck) > 0 && w.rescanAll(ctx) {
+		w.rec.rechecked = obs.recheck
+	}
 }
 
 var errUnchanged = errors.New("nothing changed")
