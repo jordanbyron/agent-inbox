@@ -1,7 +1,8 @@
 # agent-inbox
 
-Draft spec, 2026-11-23. A Rex-native successor to claude-inbox, in a new
-repository. This file moves there as its first commit.
+Draft spec, 2026-11-23. A Rex-native successor to claude-inbox.
+[rex-quirks.md](rex-quirks.md) records what Rex and the harnesses were seen
+to do.
 
 [Problem statement](#problem-statement) · [Proposed solution](#proposed-solution) · [Decisions](#decisions) · [Terms](#terms) · [Architecture](#architecture) ·
 [Agents, status and families](#agents-status-and-families) · [Triage rules](#triage-rules) · [Starting, restoring and deleting](#starting-restoring-and-deleting) ·
@@ -17,7 +18,7 @@ when nothing else knew where the agents were. It has two costs:
 
 - Every harness needs an adapter that can list, attach, start, stop and
   delete. Claude's and Codex's come to about 1,170 lines, and
-  [cli-quirks.md](cli-quirks.md) is 279 lines of what those daemons really do.
+  [cli-quirks.md](https://github.com/jordanbyron/claude-inbox/blob/main/docs/cli-quirks.md) is 279 lines of what those daemons really do.
 - About 330 more lines exist so that one process owns the state while other
   front ends ask it for changes: the writer lock, the snapshot, the action
   requests and headless mode.
@@ -77,7 +78,7 @@ Settled on 2026-11-23.
 | Closing a block settles; settling closes the block | Settled means no block, so Rex's tabs are exactly the live work. `Enter` on a settled row restores it. |
 | One required watcher, started on demand | With an inbox split in several tabs, several observers would each record the same event and each poll GitHub. |
 | The form picks the Rex session, defaulting to the current one | Rex has no notion of a project, and a silent mapping would surprise. |
-| Claude and Codex built in; other harnesses by config | Each shipped recipe has to be checked against the real CLI. |
+| Claude, Codex and agy built in; other harnesses by config | Each shipped recipe has to be checked against the real CLI. |
 | agent-inbox owns worktrees, on by default in a git repository | A worktree that belongs to one agent is what makes pull request detection exact. |
 | Worktrees default to `<repo>/.worktrees/<name>`, overridable | Easy to find. The template is there for repositories whose tools scan nested copies. |
 | Pull requests come from the worktree's branches, else from `rex capture` | No transcript reading, so recipes carry no knowledge of a harness's files. |
@@ -148,9 +149,9 @@ is working, and it needs you if any record is blocked or in error. That
 brings back "waiting on a sub-agent" for a harness that reports its
 sub-agents this way.
 
-A block with a record but no status yet shows as `starting`. If a harness
-turns out not to report status, its recipe carries a hook that does. That is
-the per-harness cost, and it stays in the recipe.
+A block with a record but no status yet shows as `starting`. Claude Code,
+Codex and agy all report status with no hook. A harness added by config that
+doesn't report shows as `starting` for as long as it runs.
 
 **Families.** `agent-inbox new` run from inside an agent's block finds that
 block in `REX_BLOCK` and records the agent as the parent. Rex keeps no
@@ -331,7 +332,8 @@ focused agent. The keys are the user's to choose.
 ## Recipes and config
 
 A recipe, shown for Claude. The flags come from what claude-inbox passes
-today and get checked again in step 0.
+today. The built-in recipes for Codex and agy follow the same shape, with
+`app` set to `codex` and `antigravity`.
 
 ```toml
 [recipes.claude]
@@ -370,11 +372,13 @@ base    = "fresh"           # or "head"
 
 [rexuikit](https://github.com/dphaener/rexuikit) is Darin Haener's Go
 toolkit for programs that run as Rex floating layers (MIT, Bubble Tea v2).
-Read on 2026-11-23, when it tracked Rex API revision 7.
+Read on 2026-11-23, when it tracked Rex API revision 7. Rex is at revision
+18, so agent-inbox doesn't depend on it. Its notes on Rex's behavior are
+still the best reading there is.
 
 | Package | What it does | Where it fits here |
 |---|---|---|
-| `client` | One WebSocket connection to Rex, with typed methods and an event channel. A call takes 0.1-3 ms, against about 76 ms for the `rex` CLI. | The Rex client in step 2 and the watcher's event stream. |
+| `client` | One WebSocket connection to Rex, with typed methods and an event channel. A call takes 0.1-3 ms, against about 76 ms for the `rex` CLI. | What our own Rex client and the watcher's event stream need to do. |
 | `surface` | Opens a program as a modal, drawer or split and reports when it closes. It can pre-warm a program so the layer appears at once. | The form as a modal; the compact list as a drawer or split. |
 | `ui` | Form, list, dialog, hint bar and notice components, with golden-frame tests. | The form's plain fields, the snooze menu and the confirms. Its text area has no image paste or slash menu. |
 | `entry` | Runs a quick action before the rest of the program loads, and measures time to first paint. | The verbs, and the form's startup. |
@@ -407,7 +411,7 @@ Rex, then, and survives a watcher restart.
 |---|---|---|
 | `Store`, `Entry`, `Row`, `SnoozeTime` | ~650 | Ported to Go, re-keyed by agent id, minus the writer and relay half. |
 | `PullRequests`, `StackLinks` | ~300 | Ported. Discovery changes; health and refresh don't. |
-| `NewSessionForm`, `TextBuffer`, `SlashCommands`, `Images`, `Paste` | ~950 | Rewritten on Bubble Tea, with rexuikit's fields where they fit. The specs list the cases. |
+| `NewSessionForm`, `TextBuffer`, `SlashCommands`, `Images`, `Paste` | ~950 | Rewritten on Bubble Tea. The specs list the cases. |
 | `Renderer`, `Dialog`, `Keymap`, `Theme`, `Text` | ~960 | Rewritten on Bubble Tea. `bin/screens` output is the reference. |
 | `Notifier`, `Reaper` | ~180 | Ported into the watcher. |
 | `Rex` and `claude-inbox attach` | ~110 | Becomes the Rex client the whole program uses. |
@@ -420,24 +424,22 @@ claude-inbox stays as it is, for people who aren't in Rex.
 
 ## Build order
 
-Each step is one pull request unless noted. Step 0 comes first because three
-later steps rest on what it finds.
+Each step is one pull request unless noted. Steps 0 and 1 are done.
 
-0. **Spike, written up as `docs/rex-quirks.md`.** No code kept. In Rex, run
-   Claude Code and Codex and record whether each reports OSC 7501, with
-   which `app`, whether sub-agents show up as child records, and how much of
-   each harness's output `rex capture` returns.
-1. Repository, local CI with signoff as here, and the state file with the
-   triage rules as table tests ported from the specs.
-2. The Rex client. Try rexuikit's `client` and its fake server first.
-3. The watcher: observe, write the snapshot, start on demand, heartbeat.
-4. `ls --json` and the verbs.
-5. The list view, then its compact layout.
-6. Recipes, `new` with flags only, and worktrees.
-7. The form, in three pull requests: fields, prompt editor, paste and menu.
-8. Pull requests: worktree branches, the capture fallback, auto-settle.
-9. Families.
-10. Notifications, reap, the Lua snippet and the README.
+0. The spike, written up as [rex-quirks.md](rex-quirks.md).
+1. Repository, Go module, a `version` command and local CI with signoff.
+2. `internal/triage`: the rules as pure functions, with table tests ported
+   from the `Store::Row` and `Store::Entry` specs.
+3. `internal/state`: the state file, its lock file and atomic writes.
+4. `internal/rex`: the interface the program uses, a client and a fake.
+5. The watcher: observe, write the snapshot, start on demand, heartbeat.
+6. `ls --json` and the verbs.
+7. The list view, then its compact layout.
+8. Recipes, `new` with flags only, and worktrees.
+9. The form, in three pull requests: fields, prompt editor, paste and menu.
+10. Pull requests: worktree branches, the capture fallback, auto-settle.
+11. Families.
+12. Notifications, reap, the Lua snippet and the README.
 
 ## Alternatives considered
 
@@ -454,21 +456,17 @@ later steps rest on what it finds.
 
 ## Open questions
 
-1. Do Claude Code and Codex report OSC 7501 inside Rex today? Rex's docs
-   name no adopters. If either doesn't, how small a hook makes it? (Step 0.)
-2. Do we depend on rexuikit or only read it? I'd take `client` and
-   `surface`, which hold Rex behaviour we would otherwise measure again, and
-   try `ui` for all but the prompt editor. The risk is one maintainer on a
-   beta Rex.
-3. Is there a way to get every block's status in one call? None is
-   documented, so the watcher asks each block once at startup.
-4. Rex's roadmap lists "a unified priority inbox view". If it ships, how
+1. How does a recipe learn the session id of a Codex or agy it just
+   started? Neither takes one at start, and restore needs it.
+2. Is there a way to get every block's status in one call? `rex api list`
+   shows none, so the watcher asks each block once at startup.
+3. Rex's roadmap lists "a unified priority inbox view". If it ships, how
    much of the list do we keep? Triage, pull requests and worktrees are the
    parts least likely to be covered.
-5. Should a found agent become a launched one on first triage, by labelling
+4. Should a found agent become a launched one on first triage, by labeling
    its block and writing a record? Left out of v1 because we can't learn the
    harness's session id from outside, so it could never be restored.
-6. How should a fresh worktree get the files git doesn't track (`.env`,
+5. How should a fresh worktree get the files git doesn't track (`.env`,
    installed dependencies)? A per-repository setup command is the obvious
    answer and isn't in v1.
 
@@ -482,7 +480,7 @@ text was not read.
 - `rex capture` returns a block's screen and scrollback as text.
 - A block has no documented parent, and Rex has no notion of a project.
 
-**From claude-inbox on Rex 0.1.0**, in [cli-quirks.md](cli-quirks.md): `rex
+**From claude-inbox on Rex 0.1.0**, in [cli-quirks.md](https://github.com/jordanbyron/claude-inbox/blob/main/docs/cli-quirks.md): `rex
 run` starts its command in the login shell's environment, and the app only
 changes tab through its `session.select` action, with Remote Control on.
 
@@ -490,10 +488,11 @@ changes tab through its `session.select` action, with Remote Control on.
 `ruby -e ''` 108 ms, Ruby loading only `claude_inbox/store` 147 ms, Ruby
 loading the whole app 590 ms, and about 200 ms more through the asdf shim.
 
-**Checked in `claude --help`:** `--session-id <uuid>`, `--resume` and
-`--name` exist. **Not checked:** Codex's flags, whether either harness
-reports status in Rex, and what `rex capture` returns for them.
+**Seen in Rex:** everything in [rex-quirks.md](rex-quirks.md), which also
+lists what is still unchecked.
 
 ## Changelog
 
 - 2026-11-23: first draft, then rexuikit added as prior art.
+- 2026-11-23: spike results. agy is a built-in recipe, rexuikit is not a
+  dependency, and the build order starts from a scaffold.
