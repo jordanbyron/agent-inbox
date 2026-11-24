@@ -9,19 +9,26 @@ import (
 )
 
 // world is the watcher's picture of the Rex server: its sessions, their
-// blocks and status records, and which sessions each app is attached to.
-// Only the watcher's own loop touches it.
+// blocks and status records, and which tab each app is showing. Only the
+// watcher's own loop touches it.
 type world struct {
 	sessions map[string]*session
 	// apps holds the session ids each connected Rex app is attached to.
 	apps map[string][]string
+	// showing is the tab each app last displayed. An app with none yet
+	// shows nothing as far as the watcher knows.
+	showing map[string]tab
+}
+
+type tab struct {
+	sessionID string
+	windowID  string
 }
 
 type session struct {
-	id           string
-	activeWindow string
-	revision     int
-	blocks       map[string]*block
+	id       string
+	revision int
+	blocks   map[string]*block
 }
 
 type block struct {
@@ -35,7 +42,7 @@ type block struct {
 }
 
 func newWorld() *world {
-	return &world{sessions: map[string]*session{}, apps: map[string][]string{}}
+	return &world{sessions: map[string]*session{}, apps: map[string][]string{}, showing: map[string]tab{}}
 }
 
 // setView replaces what is known of a session's windows with view. A block
@@ -47,7 +54,6 @@ func (w *world) setView(view rex.View) (added []*block) {
 		s = &session{id: view.SessionID, blocks: map[string]*block{}}
 		w.sessions[view.SessionID] = s
 	}
-	s.activeWindow = view.ActiveWindowID
 	s.revision = view.Revision
 	blocks := map[string]*block{}
 	for _, win := range view.Windows {
@@ -85,15 +91,12 @@ func (w *world) removeWindow(sessionID, windowID string) {
 		return
 	}
 	maps.DeleteFunc(s.blocks, func(_ string, b *block) bool { return b.windowID == windowID })
-	if s.activeWindow == windowID {
-		s.activeWindow = ""
-	}
+	maps.DeleteFunc(w.showing, func(_ string, t tab) bool { return t == tab{sessionID, windowID} })
 }
 
-func (w *world) setActiveWindow(sessionID, windowID string) {
-	if s := w.sessions[sessionID]; s != nil {
-		s.activeWindow = windowID
-	}
+func (w *world) removeSession(sessionID string) {
+	delete(w.sessions, sessionID)
+	maps.DeleteFunc(w.showing, func(_ string, t tab) bool { return t.sessionID == sessionID })
 }
 
 func (w *world) setApps(apps []rex.App) {
@@ -101,6 +104,41 @@ func (w *world) setApps(apps []rex.App) {
 	for _, app := range apps {
 		w.apps[app.ClientID] = app.SessionIDs
 	}
+	maps.DeleteFunc(w.showing, func(clientID string, _ tab) bool { return !w.isApp(clientID) })
+}
+
+// keepShowing carries over from before a scan what each app was showing,
+// where that tab is still there.
+func (w *world) keepShowing(before *world) {
+	for clientID, t := range before.showing {
+		if w.isApp(clientID) && w.hasWindow(t) {
+			w.showing[clientID] = t
+		}
+	}
+}
+
+func (w *world) hasWindow(t tab) bool {
+	s := w.sessions[t.sessionID]
+	if s == nil {
+		return false
+	}
+	for _, b := range s.blocks {
+		if b.windowID == t.windowID {
+			return true
+		}
+	}
+	return false
+}
+
+// sized records that an app displayed the block's tab, and reports false
+// for a block the watcher doesn't know.
+func (w *world) sized(sessionID, blockID, clientID string) bool {
+	b := w.block(sessionID, blockID)
+	if b == nil {
+		return false
+	}
+	w.showing[clientID] = tab{sessionID: sessionID, windowID: b.windowID}
+	return true
 }
 
 func (w *world) isApp(clientID string) bool {
@@ -108,16 +146,12 @@ func (w *world) isApp(clientID string) bool {
 	return ok
 }
 
-// shown reports whether a Rex app is showing the window. Rex keeps one
-// active window per session, not per app, so this is the best it can say:
-// an app attached to a session it isn't displaying still counts.
+// shown reports whether a Rex app is showing the window. A session's
+// active window can't say: Rex.app attaches to every session, and its tab
+// changes don't move the server's active window.
 func (w *world) shown(sessionID, windowID string) bool {
-	s := w.sessions[sessionID]
-	if s == nil || windowID == "" || s.activeWindow != windowID {
-		return false
-	}
-	for _, sessionIDs := range w.apps {
-		if slices.Contains(sessionIDs, sessionID) {
+	for _, t := range w.showing {
+		if t.sessionID == sessionID && t.windowID == windowID {
 			return true
 		}
 	}

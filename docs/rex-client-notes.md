@@ -115,12 +115,44 @@ revision 10, unless it says otherwise.
 - Rex.app attaches to every session, even one made with `rex new` that no
   window shows, so `client.list` lists those sessions in its `session_ids`.
   The app also has a second connection with no `info`.
-- No app action reports which tab the app shows, and a session has one
-  `active_window_id`. So "which window an app shows" can only be read as
-  the active window of each session the app is attached to.
 - Remote Control was on for this server (`client.perform` of
   `client.update.status` succeeded), so the refusal wasn't seen again.
   `ErrRemoteControlOff` matches the text claude-inbox recorded on 0.1.0,
   `Rex.app is not accepting actions. Turn on Remote Control in its Settings
   under Rex Server.`; its code is assumed to be `refused`, which
   `client.perform` documents for a declining client.
+
+## Which tab an app shows
+
+Checked by switching the app between two throwaway sessions with
+`client.perform` of its own `session.select`, `session.next`,
+`session.previous` and `client.tab.next`, while following `rex events
+--all --json`.
+
+- No method says. `client.list`, `client.inspect` (whose `actions` list the
+  app's actions, none of which report state) and `session.list_clients`
+  give the sessions an app is attached to, which for Rex.app is all of
+  them.
+- A session's `active_window_id` is the server's, not the app's. After
+  `client.tab.next` in the app, the app showed the other tab and
+  `session.view` still named the first, and no `active_window_changed`
+  came. Only server calls such as `session.focus_block` or `new_window`
+  with `focus` move it.
+- What does follow the app: each time it displays a block it sizes it,
+  even at the same size, and that comes out as a `size_changed` block
+  event whose payload names the app as `owner` (and its pid under
+  `principal`). Every tab change and session change above sent one for
+  the block of the tab now showing, and none for the tab left behind.
+  Only one-block tabs were tried.
+- The first time the app displays a block someone else owns, it takes it
+  first (`block_owner_changed`, reason `take`). It keeps ownership after
+  it moves on, so ownership says which blocks it has shown, not which it
+  shows.
+- `client.perform` sends a top-level `client_performed` event with the
+  app's `client_id` and the `action`, but not its `args`, so it can't say
+  which session was selected.
+
+The watcher therefore counts a tab as seen while it is the last one an app
+sized a block in, and with no `size_changed` from an app yet, nothing is
+seen. An app can have several windows of its own, each showing a tab; only
+the last one it sized counts, which errs toward Needs you.

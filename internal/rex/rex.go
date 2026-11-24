@@ -89,13 +89,6 @@ type App struct {
 	SessionIDs []string
 }
 
-// ShownWindow is the window an app shows for one session it is attached to.
-type ShownWindow struct {
-	ClientID  string
-	SessionID string
-	WindowID  string
-}
-
 // StartOptions says where and how Client.Start runs a command.
 type StartOptions struct {
 	// SessionID is the session to open a window in. Empty makes a new

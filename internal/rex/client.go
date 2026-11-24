@@ -170,35 +170,6 @@ func (c *Client) Apps(ctx context.Context) ([]App, error) {
 	return apps, nil
 }
 
-// ShownWindows returns the window each app shows in each session it is
-// attached to. Rex keeps one active window per session, not per app, so
-// every app attached to a session gets that session's active window.
-func (c *Client) ShownWindows(ctx context.Context) ([]ShownWindow, error) {
-	apps, err := c.Apps(ctx)
-	if err != nil {
-		return nil, err
-	}
-	active := map[string]string{}
-	var shown []ShownWindow
-	for _, app := range apps {
-		for _, sessionID := range app.SessionIDs {
-			window, ok := active[sessionID]
-			if !ok {
-				view, err := c.View(ctx, sessionID)
-				if err != nil {
-					return nil, fmt.Errorf("reading the window app %s shows: %w", app.ClientID, err)
-				}
-				window = view.ActiveWindowID
-				active[sessionID] = window
-			}
-			if window != "" {
-				shown = append(shown, ShownWindow{ClientID: app.ClientID, SessionID: sessionID, WindowID: window})
-			}
-		}
-	}
-	return shown, nil
-}
-
 // Start runs a command in a new window and returns where it went. A new
 // session it made is destroyed again if the window can't be made.
 func (c *Client) Start(ctx context.Context, opts StartOptions) (Started, error) {

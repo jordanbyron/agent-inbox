@@ -33,13 +33,18 @@ const (
 	EventClientLeft          EventType = "client_left"
 	EventClientConnected     EventType = "client_connected"
 	EventClientDisconnected  EventType = "client_disconnected"
+	// EventBlockSized is Rex's size_changed. An app sizes every block it
+	// displays, each time it displays it, so this is how a watcher learns
+	// which tab an app shows: Rex has no call that says.
+	EventBlockSized EventType = "size_changed"
 )
 
 // Event is one thing that happened on the server. Each type fills the ids
 // it is about; Label goes with the created and label-changed types, Record
 // with EventStatusChanged, RecordIDs with EventStatusRemoved, Reason with
 // both status types, ExitCode with EventProgramExited, Revision with
-// EventViewChanged, and ClientID with the four client types. ClientKind
+// EventViewChanged, and ClientID with the four client types and with
+// EventBlockSized, where it is the block's owner, the app that sized it. ClientKind
 // goes with EventClientJoined: "app" for a Rex app, "cli" for a rex command.
 type Event struct {
 	Type       EventType
@@ -154,6 +159,7 @@ type wireFields struct {
 	IDs       []string        `json:"ids"`
 	Reason    string          `json:"reason"`
 	ExitCode  int             `json:"exit_code"`
+	Owner     string          `json:"owner"`
 }
 
 // decodeEvent reads one line of `rex events --json`. Session events come
@@ -211,7 +217,7 @@ func decodeSessionEvent(sessionID string, inner wireEvent) (Event, bool, error) 
 
 func decodeBlockEvent(sessionID string, block wireFields) (Event, bool, error) {
 	switch block.Name {
-	case EventStatusChanged, EventStatusRemoved, EventProgramExited:
+	case EventStatusChanged, EventStatusRemoved, EventProgramExited, EventBlockSized:
 	default:
 		return Event{}, false, nil
 	}
@@ -227,6 +233,7 @@ func decodeBlockEvent(sessionID string, block wireFields) (Event, bool, error) {
 		RecordIDs: fields.IDs,
 		Reason:    fields.Reason,
 		ExitCode:  fields.ExitCode,
+		ClientID:  fields.Owner,
 	}, true, nil
 }
 

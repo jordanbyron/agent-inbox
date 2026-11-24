@@ -67,6 +67,10 @@ func TestEventsDecodesWhatRexPrints(t *testing.T) {
 		{Type: rex.EventStatusRemoved, SessionID: session, BlockID: cleared, RecordIDs: []string{"a/b"}, Reason: "clear"},
 		{Type: rex.EventStatusRemoved, SessionID: session, BlockID: cleared, RecordIDs: []string{""}, Reason: "child_exited"},
 		{Type: rex.EventWindowLabelChanged, SessionID: session, WindowID: "window:01a20b38-bf42-7b37-8118-6f6d149d54c7", Label: "probe-win"},
+		{
+			Type: rex.EventBlockSized, SessionID: "session:01a20b7b-b74e-7a96-a26e-c51352b89fa9",
+			BlockID: "block:01a20b7b-b74e-7bdb-87f2-18f9e02c35df", ClientID: "client:01a1f6c3-434f-7e9a-a081-3478a39840ac",
+		},
 	}, got)
 }
 

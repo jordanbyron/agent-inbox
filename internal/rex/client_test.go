@@ -196,18 +196,6 @@ func TestApps(t *testing.T) {
 	require.Equal(t, []string{`api call client.list {"kinds":["app"]}`}, calls())
 }
 
-func TestShownWindows(t *testing.T) {
-	client, _ := fakeRex(t,
-		reply{match: "client.list", file: "client_list.json"},
-		reply{match: "session.view", file: "session_view.json"},
-	)
-
-	shown, err := client.ShownWindows(t.Context())
-	require.NoError(t, err)
-	require.Len(t, shown, 3)
-	require.Equal(t, rex.ShownWindow{ClientID: testApp, SessionID: testSession, WindowID: testWindow}, shown[1])
-}
-
 func TestStart(t *testing.T) {
 	opts := rex.StartOptions{
 		Command:     []string{"claude", "--name", "fix login"},
