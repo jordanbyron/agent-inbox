@@ -3,8 +3,10 @@
 
 -- A full path, because init.lua runs with the Rex server's PATH.
 local agent_inbox = AGENT_INBOX
-local shell = "com.superlogical.terminal.shell"
+local terminal = "com.superlogical.terminal"
+local shell = terminal .. ".shell"
 local beside_label = "agent-inbox-beside"
+local modal_label = "agent-inbox-modal"
 
 local function running(command, label)
   return rex.layout.block{ flavor = shell, label = label, options = { command = command } }
@@ -15,26 +17,8 @@ local function check(result, err)
   return result
 end
 
-rex.action{
-  name = "agent_inbox_new",
-  title = "Agent Inbox: New Agent",
-  run = function(ctx, args)
-    check(rex.session.new_layer{
-      bounds = { 0.1, 0.1, 0.8, 0.8 },
-      layout = running({ agent_inbox, "new" }),
-      focus = true,
-    })
-  end,
-}
-
-rex.action{
-  name = "agent_inbox_tab",
-  title = "Agent Inbox: Open in a Tab",
-  run = function(ctx, args)
-    check(rex.session.new_window{ layout = running({ agent_inbox }), focus = true })
-  end,
-}
-
+-- The server's active window can differ from the tab the app shows, so the
+-- window is the one holding the block the key was pressed in.
 local function window_holding(view, block_id)
   for _, window in ipairs(view.windows) do
     for _, layer in ipairs(window.layers) do
@@ -48,50 +32,61 @@ local function window_holding(view, block_id)
   end
 end
 
-rex.action{
-  name = "agent_inbox_beside",
-  title = "Agent Inbox: Toggle Beside This Tab",
-  run = function(ctx, args)
-    local window = window_holding(check(rex.session.view{}), ctx.block_id)
-    if window == nil then error("no tab to open the inbox beside", 0) end
-    local tiled
-    for _, layer in ipairs(window.layers) do
-      if layer.kind == "tiled" then tiled = layer end
-      for _, block in ipairs(layer.blocks) do
-        if block.label == beside_label then
-          check(rex.call("block.close", { session_id = ctx.session_id, block_id = block.block_id }))
-          return
-        end
+local function this_window(ctx)
+  local window = window_holding(check(rex.session.view{}), ctx.block_id)
+  if window == nil then error("no tab to open the inbox in", 0) end
+  return window
+end
+
+local function close_if_open(ctx, window, label)
+  for _, layer in ipairs(window.layers) do
+    for _, block in ipairs(layer.blocks) do
+      if block.label == label then
+        check(rex.call("block.close", { session_id = ctx.session_id, block_id = block.block_id }))
+        return true
       end
     end
-    local whole = tiled.layout.split and tiled.layout.split.split_id or tiled.layout.block_id
-    check(rex.session.new_split{
-      anchor_id = whole,
-      direction = "horizontal",
-      side = "after",
-      ratio = 0.7,
-      layout = running({ agent_inbox }, beside_label),
-      focus = true,
-    })
-  end,
-}
+  end
+  return false
+end
 
-local function open_modal(ctx)
-  local window = window_holding(check(rex.session.view{}), ctx.block_id)
-  if window == nil then error("no tab to open the inbox over", 0) end
+local function new_agent(ctx)
   check(rex.session.new_layer{
-    window_id = window.window_id,
+    window_id = this_window(ctx).window_id,
     bounds = { 0.1, 0.1, 0.8, 0.8 },
-    layout = running({ agent_inbox, "list", "--modal" }),
+    layout = running({ agent_inbox, "new" }),
     focus = true,
   })
 end
 
-rex.action{
-  name = "agent_inbox_modal",
-  title = "Agent Inbox: Open as a Modal",
-  run = function(ctx, args) open_modal(ctx) end,
-}
+local function toggle_modal(ctx)
+  local window = this_window(ctx)
+  if close_if_open(ctx, window, modal_label) then return end
+  check(rex.session.new_layer{
+    window_id = window.window_id,
+    bounds = { 0.1, 0.1, 0.8, 0.8 },
+    layout = running({ agent_inbox, "list", "--modal" }, modal_label),
+    focus = true,
+  })
+end
+
+local function toggle_beside(ctx)
+  local window = this_window(ctx)
+  if close_if_open(ctx, window, beside_label) then return end
+  local tiled
+  for _, layer in ipairs(window.layers) do
+    if layer.kind == "tiled" then tiled = layer end
+  end
+  local whole = tiled.layout.split and tiled.layout.split.split_id or tiled.layout.block_id
+  check(rex.session.new_split{
+    anchor_id = whole,
+    direction = "horizontal",
+    side = "after",
+    ratio = 0.7,
+    layout = running({ agent_inbox }, beside_label),
+    focus = true,
+  })
+end
 
 local function said(output)
   return (output:gsub("^Error: ", ""):gsub("%s+$", ""))
@@ -104,11 +99,51 @@ local function on_focused_agent(ctx, verb, ...)
   return said(r.stdout)
 end
 
+-- rex.ui only answers inside the action that was run, not one it invokes,
+-- so the menu and the snooze action both call this directly.
+local function snooze(ctx, duration)
+  duration = duration or rex.ui.pick{
+    title = "Snooze for",
+    items = {
+      { id = "15m", title = "15 minutes" },
+      { id = "1h", title = "1 hour" },
+      { id = "tomorrow", title = "Until tomorrow at 9am" },
+      { id = "until-woken", title = "Until I wake it" },
+    },
+  }
+  if duration == nil then return end
+  return on_focused_agent(ctx, "snooze", duration)
+end
+
+local function reports_status(block_id)
+  if block_id == nil then return false end
+  local status = rex.block.call(terminal, "program_status", { block_id = block_id })
+  return status ~= nil and status.records ~= nil and #status.records > 0
+end
+
+rex.action{
+  name = "agent_inbox_modal",
+  title = "Agent Inbox: Toggle Over This Tab",
+  run = function(ctx, args) toggle_modal(ctx) end,
+}
+
+rex.action{
+  name = "agent_inbox_beside",
+  title = "Agent Inbox: Toggle Beside This Tab",
+  run = function(ctx, args) toggle_beside(ctx) end,
+}
+
+rex.action{
+  name = "agent_inbox_new",
+  title = "Agent Inbox: New Agent",
+  run = function(ctx, args) new_agent(ctx) end,
+}
+
 rex.action{
   name = "agent_inbox_snooze",
   title = "Agent Inbox: Snooze This Agent",
   args = { duration = "string?" },
-  run = function(ctx, args) return on_focused_agent(ctx, "snooze", args.duration or "1h") end,
+  run = function(ctx, args) return snooze(ctx, args.duration) end,
 }
 
 rex.action{
@@ -123,20 +158,40 @@ rex.action{
   run = function(ctx, args) return on_focused_agent(ctx, "settle") end,
 }
 
--- The keys are yours to choose. For example, after Cmd+I:
--- rex.bind("cmd+i>n", "agent_inbox_new")
--- rex.bind("cmd+i>i", "agent_inbox_tab")
--- rex.bind("cmd+i>m", "agent_inbox_modal")
--- rex.bind("cmd+i>b", "agent_inbox_beside")
--- rex.bind("cmd+i>s", "agent_inbox_snooze", { duration = "1h" })
--- rex.bind("cmd+i>t", "agent_inbox_pin")
--- rex.bind("cmd+i>x", "agent_inbox_settle")
+-- The inbox comes first, so the key and then Enter summons it.
+rex.action{
+  name = "agent_inbox_menu",
+  title = "Agent Inbox",
+  run = function(ctx, args)
+    local items = {
+      { id = "modal", title = "Inbox", subtitle = "Over this tab; again to dismiss", icon = "star" },
+      { id = "new", title = "New agent", icon = "plus" },
+      { id = "beside", title = "Park the inbox beside this tab", subtitle = "Again to remove it", icon = "terminal" },
+    }
+    if reports_status(ctx.block_id) then
+      items[#items + 1] = { id = "snooze", title = "Snooze this agent", icon = "clock" }
+      items[#items + 1] = { id = "pin", title = "Pin or unpin this agent", icon = "tag" }
+      items[#items + 1] = { id = "settle", title = "Settle this agent", subtitle = "Closes its tab", icon = "document" }
+    end
+    local choice = rex.ui.pick{ title = "Agent Inbox", placeholder = "Filter", items = items }
+    if choice == "modal" then return toggle_modal(ctx) end
+    if choice == "new" then return new_agent(ctx) end
+    if choice == "beside" then return toggle_beside(ctx) end
+    if choice == "snooze" then return snooze(ctx) end
+    if choice == "pin" then return on_focused_agent(ctx, "pin") end
+    if choice == "settle" then return on_focused_agent(ctx, "settle") end
+  end,
+}
+
+-- The keys are yours to choose. One key for the command list:
+-- rex.bind("cmd+i", "agent_inbox_menu")
+-- Or a key each:
+-- rex.bind("cmd+shift+i", "agent_inbox_modal")
+-- rex.bind("cmd+shift+n", "agent_inbox_new")
 
 -- The left arrow opens the inbox as a modal where Claude Code or Codex would
 -- take it to their own agents view, and is a cursor key everywhere else.
 -- Uncomment to use.
---
--- local terminal = "com.superlogical.terminal"
 --
 -- -- What each harness shows at the end of its screen while the left arrow
 -- -- would open its agents view. The hint goes once the composer has text, and
@@ -163,6 +218,6 @@ rex.action{
 -- -- reads as "not an agent" and the key goes on to the terminal.
 -- rex.bind("left", function(ctx, ev)
 --   if ctx.block_id == nil or not left_opens_agents_view(ctx.block_id) then return false end
---   open_modal(ctx)
+--   toggle_modal(ctx)
 --   return true
 -- end)
