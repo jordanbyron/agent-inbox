@@ -117,9 +117,11 @@ func (r *Record) UnmarshalJSON(data []byte) error {
 type PRState string
 
 // The states a pull request can be in. PRStateUnknown means gh has not said.
+// gh reports a draft as OPEN plus isDraft; it is kept as DRAFT here.
 const (
 	PRStateUnknown PRState = ""
 	PRStateOpen    PRState = "OPEN"
+	PRStateDraft   PRState = "DRAFT"
 	PRStateMerged  PRState = "MERGED"
 	PRStateClosed  PRState = "CLOSED"
 )
