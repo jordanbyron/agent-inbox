@@ -267,21 +267,31 @@ func (w *watcher) enqueue(j job) {
 func (w *watcher) settle(ctx context.Context) {
 	now := w.clock.Now()
 	w.fillDirs(ctx)
-	w.record(ctx, now)
-	if w.autoSettle(ctx, now) {
-		w.record(ctx, now)
-	}
-	if w.reapDue(ctx, now) {
-		w.record(ctx, now)
-	}
+	w.recordAndAct(ctx, now)
 	if w.notifier != nil {
 		w.notifyChanges(now)
 	}
 	w.publish(now)
 }
 
-// record writes one observation of every agent in a single update.
-func (w *watcher) record(ctx context.Context, now time.Time) {
+// recordAndAct records what the watcher sees, then closes and deletes what
+// the rules say to. It acts only after an observation was written: one
+// that wasn't pairs the state with an older picture of Rex.
+func (w *watcher) recordAndAct(ctx context.Context, now time.Time) {
+	if !w.record(ctx, now) {
+		return
+	}
+	if w.autoSettle(ctx, now) && !w.record(ctx, now) {
+		return
+	}
+	if w.reapDue(ctx, now) {
+		w.record(ctx, now)
+	}
+}
+
+// record writes one observation of every agent in a single update, and
+// reports whether it could.
+func (w *watcher) record(ctx context.Context, now time.Time) bool {
 	found := w.found
 	var agents []agent
 	var obs observation
@@ -291,7 +301,7 @@ func (w *watcher) record(ctx context.Context, now time.Time) {
 	})
 	if err != nil {
 		w.log.Error("recording what Rex shows", "err", err)
-		return
+		return false
 	}
 	w.found = nil
 	w.rec.commit(obs)
@@ -300,6 +310,7 @@ func (w *watcher) record(ctx context.Context, now time.Time) {
 	if len(obs.recheck) > 0 && w.rescanAll(ctx) {
 		w.rec.rechecked = obs.recheck
 	}
+	return true
 }
 
 var errUnchanged = errors.New("nothing changed")

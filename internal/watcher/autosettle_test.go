@@ -1,6 +1,8 @@
 package watcher_test
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -289,4 +291,23 @@ func TestAutoSettleHoldsForARestoredChild(t *testing.T) {
 	h.heartbeat()
 
 	require.Empty(t, h.rex.ClosedWindows(), "the child was restored to ask it something")
+}
+
+// What the watcher can't record it hasn't fully seen, so it doesn't act on it.
+func TestAutoSettleWaitsWhileTheStateCantBeWritten(t *testing.T) {
+	h, _, _, _, tab := mergedAgent(t)
+	require.NoError(t, os.Chmod(h.dir, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(h.dir, 0o700) })
+	const failed = "recording what Rex shows"
+
+	h.clock.Advance(pulls.RefreshAfter)
+	h.waitLog(failed)
+	h.clock.Advance(time.Second)
+	require.Eventually(t, func() bool { return strings.Count(h.log.String(), failed) >= 2 }, waitFor, time.Millisecond)
+	require.Empty(t, h.rex.ClosedWindows())
+
+	require.NoError(t, os.Chmod(h.dir, 0o700))
+	h.clock.Advance(time.Second)
+	h.waitSection("a1", settled)
+	require.Equal(t, []string{tab}, h.rex.ClosedWindows())
 }
