@@ -87,13 +87,13 @@ func (w *world) alone(sessionID, windowID string) bool {
 	if s == nil {
 		return false
 	}
-	n := 0
+	var labels []string
 	for _, b := range s.blocks {
 		if b.windowID == windowID {
-			n++
+			labels = append(labels, b.label)
 		}
 	}
-	return n == 1
+	return rex.OnlyAgentIn(labels)
 }
 
 func (w *world) removeBlock(sessionID, blockID string) {

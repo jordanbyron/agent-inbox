@@ -38,8 +38,8 @@ type StartRequest struct {
 
 // Start writes the new agent's record, makes its worktree and starts it in
 // a new Rex tab, in that order. A failure undoes the steps before it. When
-// only showing the tab fails, the agent is running and returned along with
-// the error.
+// only parking the inbox or showing the tab fails, the agent is running and
+// returned along with the error.
 func (in *Inbox) Start(ctx context.Context, req StartRequest) (Agent, error) {
 	r, err := in.recipe(req.Harness)
 	if err != nil {
@@ -128,13 +128,27 @@ func (in *Inbox) Start(ctx context.Context, req StartRequest) (Agent, error) {
 	}
 
 	a := Agent{Key: id, Name: rec.Name, Launched: true}
-	if req.Show {
-		if err := in.Rex.Show(ctx, started.SessionID, started.BlockID); err != nil {
-			return a, err
+	var errs []error
+	if len(in.Parked) > 0 {
+		_, err := in.Rex.Park(ctx, rex.ParkOptions{
+			SessionID:     started.SessionID,
+			BlockID:       started.BlockID,
+			Command:       in.Parked,
+			WidthFraction: ParkedWidth,
+		})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("parking the inbox beside %s: %w", rec.Name, err))
 		}
 	}
-	return a, nil
+	if req.Show {
+		errs = append(errs, in.Rex.Show(ctx, started.SessionID, started.BlockID))
+	}
+	return a, errors.Join(errs...)
 }
+
+// ParkedWidth is the parked inbox's share of an agent's tab, the same as
+// the init.lua snippet's.
+const ParkedWidth = 0.16
 
 func (in *Inbox) recipe(name string) (recipe.Recipe, error) {
 	if name == "" {

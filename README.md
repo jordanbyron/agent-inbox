@@ -32,6 +32,10 @@ snippet's `agent_inbox_menu` action lists the commands in Rex's palette, and
 the list is already open there, behind your work or minimized, it comes
 forward instead; pressed inside the list, the action closes it.
 
+A new agent's tab opens with the list parked in a narrow pane on its left.
+`agent_inbox_beside` parks it the same way in any tab, or removes it.
+Settling an agent closes its tab, parked list and all.
+
 ## Keys
 
 | Key | Action |

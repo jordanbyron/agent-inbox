@@ -23,6 +23,14 @@ func (refusingRex) Start(context.Context, rex.StartOptions) (rex.Started, error)
 	return rex.Started{}, errors.New("no room")
 }
 
+type refusingPark struct {
+	*rextest.Fake
+}
+
+func (refusingPark) Park(context.Context, rex.ParkOptions) (string, error) {
+	return "", errors.New("no room")
+}
+
 func TestStartInAWorktree(t *testing.T) {
 	w := newWorld(t)
 	repo := newRepo(t)
@@ -61,6 +69,38 @@ func TestStartInAWorktree(t *testing.T) {
 		WindowLabel: "fix-the-login-page",
 	}}, w.rex.Started())
 	require.Empty(t, w.rex.Shown())
+	require.Empty(t, w.rex.Parked(), "no parked command, so nothing parked")
+}
+
+func TestStartParksTheInboxOnTheLeftOfTheAgent(t *testing.T) {
+	w := newWorld(t)
+	w.inbox.Parked = []string{"/opt/agent-inbox"}
+
+	a, err := w.inbox.Start(t.Context(), verbs.StartRequest{Prompt: "hi", Dir: t.TempDir(), Session: w.session, Show: true})
+
+	require.NoError(t, err)
+	parked := w.rex.Parked()
+	require.Len(t, parked, 1)
+	require.Equal(t, rex.ParkOptions{
+		SessionID:     w.session,
+		BlockID:       w.rex.Shown()[0],
+		Command:       []string{"/opt/agent-inbox"},
+		WidthFraction: verbs.ParkedWidth,
+	}, parked[0])
+	require.Equal(t, []string{verbs.BlockLabel(a.Key), rex.ParkedLabel}, w.labels(t))
+}
+
+func TestStartKeepsTheAgentWhenTheInboxCantPark(t *testing.T) {
+	w := newWorld(t)
+	w.inbox.Rex = refusingPark{w.rex}
+	w.inbox.Parked = []string{"/opt/agent-inbox"}
+
+	a, err := w.inbox.Start(t.Context(), verbs.StartRequest{Prompt: "hi", Dir: t.TempDir(), Session: w.session, Show: true})
+
+	require.ErrorContains(t, err, "parking the inbox beside hi: no room")
+	require.True(t, a.Launched)
+	require.Contains(t, w.state(t).Records, a.Key)
+	require.Len(t, w.rex.Shown(), 1, "the tab is shown all the same")
 }
 
 func TestStartWithoutAWorktree(t *testing.T) {

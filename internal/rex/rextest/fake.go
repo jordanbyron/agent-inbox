@@ -36,6 +36,7 @@ type Fake struct {
 	closedWindows []string
 	shown         []string
 	layers        []rex.LayerOptions
+	parked        []rex.ParkOptions
 	noStatus      map[string]bool
 }
 
@@ -425,6 +426,28 @@ func (f *Fake) OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer,
 	f.layers = append(f.layers, opts)
 	b := f.addBlock(s, w, "", opts.Dir)
 	return rex.Layer{ID: f.newID("layer"), BlockID: b.id}, nil
+}
+
+// Park records opts and adds the parked block to the anchor block's window.
+func (f *Fake) Park(ctx context.Context, opts rex.ParkOptions) (string, error) {
+	if err := f.reachable(ctx); err != nil {
+		return "", err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, w, _, err := f.block(opts.SessionID, opts.BlockID)
+	if err != nil {
+		return "", err
+	}
+	f.parked = append(f.parked, opts)
+	return f.addBlock(s, w, rex.ParkedLabel, "").id, nil
+}
+
+// Parked returns the options of every Park call, in order.
+func (f *Fake) Parked() []rex.ParkOptions {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.parked)
 }
 
 // Layers returns the options of every OpenLayer call, in order.

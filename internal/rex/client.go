@@ -262,6 +262,32 @@ func (c *Client) OpenLayer(ctx context.Context, opts LayerOptions) (Layer, error
 	return Layer{ID: out.LayerID, BlockID: out.BlockIDs[0]}, nil
 }
 
+// Park runs a command in a pane split off the left of a block, without taking focus.
+func (c *Client) Park(ctx context.Context, opts ParkOptions) (string, error) {
+	args := map[string]any{
+		"anchor_id": opts.BlockID,
+		"direction": "horizontal",
+		"side":      "before",
+		"ratio":     opts.WidthFraction,
+		"focus":     false,
+		"layout": map[string]any{"block": map[string]any{
+			"flavor":  "com.superlogical.terminal.shell",
+			"label":   ParkedLabel,
+			"options": map[string]any{"command": opts.Command},
+		}},
+	}
+	var out struct {
+		BlockIDs []string `json:"block_ids"`
+	}
+	if err := c.call(ctx, opts.SessionID, "session.new_split", args, &out); err != nil {
+		return "", err
+	}
+	if len(out.BlockIDs) != 1 {
+		return "", fmt.Errorf("rex session.new_split: made %d blocks, want 1", len(out.BlockIDs))
+	}
+	return out.BlockIDs[0], nil
+}
+
 // CloseBlock closes a block, ending its program. Rex closes the window too
 // when it was the window's last block.
 func (c *Client) CloseBlock(ctx context.Context, sessionID, blockID string) error {

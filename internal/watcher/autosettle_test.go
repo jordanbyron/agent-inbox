@@ -134,6 +134,28 @@ func TestAutoSettleHeldWhileAnyRecordWorksOrFails(t *testing.T) {
 	}
 }
 
+func TestAutoSettleClosesTheTabWithItsParkedInbox(t *testing.T) {
+	h := newHarness(t)
+	work := h.rex.AddSession("work")
+	editor, _ := h.tab(work, "")
+	tab, block := h.tab(work, "agent-inbox:a1")
+	_, err := h.rex.AddBlock(work, tab, rex.ParkedLabel)
+	require.NoError(t, err)
+	app := h.rex.AddApp("Rex", work)
+	require.NoError(t, h.rex.SetStatus(work, block, idle))
+	h.gh.set(912, ghPR{state: "MERGED", closedAt: t0}, "")
+	h.edit(func(st *state.State) {
+		st.Records["a1"] = launched(work, "/r/app")
+		st.PullRequests["a1"] = []state.PullRequest{{URL: prURL(912), Number: 912, Source: state.SourceCapture}}
+	})
+	h.start()
+	require.NoError(t, h.rex.Display(app, work, editor))
+	h.clock.Advance(time.Second)
+
+	h.waitSection("a1", settled)
+	require.Equal(t, []string{tab}, h.rex.ClosedWindows())
+}
+
 func TestAutoSettleClosesOnlyTheAgentInASplitTab(t *testing.T) {
 	h := newHarness(t)
 	work := h.rex.AddSession("work")

@@ -37,6 +37,7 @@ type Rex interface {
 	CloseWindow(ctx context.Context, sessionID, windowID string) error
 	Show(ctx context.Context, sessionID, blockID string) error
 	OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error)
+	Park(ctx context.Context, opts rex.ParkOptions) (string, error)
 }
 
 // Inbox is everything the verbs need. Every field is required except
@@ -59,6 +60,9 @@ type Inbox struct {
 	// Form is the command that shows the new-agent form: this binary's own
 	// absolute path and "new".
 	Form []string
+	// Parked is the command for the inbox parked on the left of each new
+	// agent's tab. Empty parks none.
+	Parked []string
 }
 
 // Target says which agent a verb is aimed at: an agent key, or a block id.
@@ -230,8 +234,12 @@ func (in *Inbox) places(ctx context.Context) (places, error) {
 			return places{}, fmt.Errorf("reading Rex session %s: %w", s.Label, err)
 		}
 		for _, w := range view.Windows {
+			labels := make([]string, len(w.Blocks))
+			for i, b := range w.Blocks {
+				labels[i] = b.Label
+			}
 			for _, b := range w.Blocks {
-				p := place{session: s.ID, window: w.ID, block: b.ID, label: b.Label, alone: len(w.Blocks) == 1}
+				p := place{session: s.ID, window: w.ID, block: b.ID, label: b.Label, alone: rex.OnlyAgentIn(labels)}
 				all.byBlock[b.ID] = p
 				if b.Label != "" {
 					all.byLabel[b.Label] = p

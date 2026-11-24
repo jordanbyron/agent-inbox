@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/triage"
 	"github.com/jordanbyron/agent-inbox/internal/verbs"
@@ -161,6 +162,23 @@ func TestSettleClosesEveryMembersTab(t *testing.T) {
 		require.Equal(t, began.Add(time.Hour), st.Entries[key].SettledAt, key)
 	}
 	require.False(t, st.Entries["root"].UntilWoken)
+}
+
+func TestSettleTakesTheParkedInboxWithTheTab(t *testing.T) {
+	w := newWorld(t)
+	w.launch(t, "a1", state.Record{}, false)
+	window, err := w.rex.AddWindow(w.session, "a1")
+	require.NoError(t, err)
+	_, err = w.rex.AddBlock(w.session, window, rex.ParkedLabel)
+	require.NoError(t, err)
+	_, err = w.rex.AddBlock(w.session, window, verbs.BlockLabel("a1"))
+	require.NoError(t, err)
+
+	_, err = w.inbox.Settle(t.Context(), verbs.Target{Key: "a1"})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{window}, w.rex.ClosedWindows())
+	require.Empty(t, w.labels(t))
 }
 
 func TestSettleLeavesYourOtherPanesInTheWindow(t *testing.T) {

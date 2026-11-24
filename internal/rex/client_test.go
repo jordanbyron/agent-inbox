@@ -282,6 +282,23 @@ func TestOpenLayer(t *testing.T) {
 		`"cwd":"/tmp/repo"}}},"window_id":"` + testWindow + `"}`}, calls())
 }
 
+func TestPark(t *testing.T) {
+	client, calls := fakeRex(t, reply{match: "session.new_split", file: "session_new_split.json"})
+
+	block, err := client.Park(t.Context(), rex.ParkOptions{
+		SessionID:     testSession,
+		BlockID:       testBlock,
+		Command:       []string{"/usr/local/bin/agent-inbox"},
+		WidthFraction: 0.16,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "block:01a20f7c-b508-7cbd-8026-6fa4b0703cf1", block)
+	require.Equal(t, []string{"api call -s " + testSession + ` session.new_split {"anchor_id":"` + testBlock + `",` +
+		`"direction":"horizontal","focus":false,"layout":{"block":{"flavor":"com.superlogical.terminal.shell",` +
+		`"label":"agent-inbox-beside","options":{"command":["/usr/local/bin/agent-inbox"]}}},"ratio":0.16,"side":"before"}`}, calls())
+}
+
 func TestClose(t *testing.T) {
 	client, calls := fakeRex(t, reply{match: "block.close"}, reply{match: "session.close_window"})
 

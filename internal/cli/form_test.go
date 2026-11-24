@@ -2,7 +2,9 @@ package cli_test
 
 import (
 	"io"
+	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -68,10 +70,20 @@ func TestTheFormsChoicesAreWhatStarts(t *testing.T) {
 	require.True(t, req.Show)
 }
 
-func TestTheFormKeepsTheListsConfigAndState(t *testing.T) {
+func TestPanesInRexKeepTheListsConfigAndState(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/scratch/config")
 	t.Setenv("XDG_STATE_HOME", "/scratch/state")
+	env := []string{"env", "XDG_CONFIG_HOME=/scratch/config", "XDG_STATE_HOME=/scratch/state"}
 
-	require.Equal(t, []string{"env", "XDG_CONFIG_HOME=/scratch/config", "XDG_STATE_HOME=/scratch/state", "/bin/agent-inbox", "new"},
-		cli.FormCommand("/bin/agent-inbox"))
+	require.Equal(t, slices.Concat(env, []string{"/bin/agent-inbox", "new"}), cli.InRexEnv("/bin/agent-inbox", "new"))
+	require.Equal(t, slices.Concat(env, []string{"/bin/agent-inbox"}), cli.InRexEnv("/bin/agent-inbox"))
+}
+
+func TestPanesInRexRunTheBinaryAloneWithoutTheVariables(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_STATE_HOME", "")
+	require.NoError(t, os.Unsetenv("XDG_CONFIG_HOME"))
+	require.NoError(t, os.Unsetenv("XDG_STATE_HOME"))
+
+	require.Equal(t, []string{"/bin/agent-inbox"}, cli.InRexEnv("/bin/agent-inbox"))
 }

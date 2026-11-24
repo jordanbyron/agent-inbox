@@ -122,6 +122,14 @@ type LayerOptions struct {
 	Bounds [4]float64
 }
 
+// ParkOptions says what Client.Park runs and beside which block.
+type ParkOptions struct {
+	SessionID     string
+	BlockID       string
+	Command       []string
+	WidthFraction float64
+}
+
 // Layer is where Client.OpenLayer put the command.
 type Layer struct {
 	ID      string

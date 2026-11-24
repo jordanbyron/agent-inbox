@@ -6,6 +6,7 @@ local agent_inbox = AGENT_INBOX
 local terminal = "com.superlogical.terminal"
 local shell = terminal .. ".shell"
 local beside_label = "agent-inbox-beside"
+local parked_width = 0.16
 local modal_label = "agent-inbox-modal"
 
 local function running(command, label)
@@ -104,8 +105,8 @@ local function toggle_beside(ctx)
   check(rex.session.new_split{
     anchor_id = whole,
     direction = "horizontal",
-    side = "after",
-    ratio = 0.7,
+    side = "before",
+    ratio = parked_width,
     layout = running({ agent_inbox }, beside_label),
     focus = true,
   })
@@ -152,7 +153,7 @@ rex.action{
 
 rex.action{
   name = "agent_inbox_beside",
-  title = "Agent Inbox: Toggle Beside This Tab",
+  title = "Agent Inbox: Toggle on the Left of This Tab",
   run = function(ctx, args) toggle_beside(ctx) end,
 }
 
@@ -189,7 +190,7 @@ rex.action{
     local items = {
       { id = "modal", title = "Inbox", subtitle = "Over this tab; again from inside it to dismiss", icon = "star" },
       { id = "new", title = "New agent", icon = "plus" },
-      { id = "beside", title = "Park the inbox beside this tab", subtitle = "Again to remove it", icon = "terminal" },
+      { id = "beside", title = "Park the inbox on the left of this tab", subtitle = "Again to remove it", icon = "terminal" },
     }
     if reports_status(ctx.block_id) then
       items[#items + 1] = { id = "snooze", title = "Snooze this agent", icon = "clock" }

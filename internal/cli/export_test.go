@@ -22,5 +22,5 @@ var FormOptions = formOptions
 // FromForm is how new turns the form's result back into a request.
 var FromForm = fromForm
 
-// FormCommand is the command n runs to show the form.
-var FormCommand = formCommand
+// InRexEnv is how a pane Rex starts runs this binary: the form, the parked inbox.
+var InRexEnv = inRexEnv

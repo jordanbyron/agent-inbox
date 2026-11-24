@@ -89,23 +89,25 @@ func newInbox(srv server) (*verbs.Inbox, error) {
 		},
 		Getenv: os.Getenv,
 		Home:   home,
-		Form:   formCommand(exe),
+		Form:   inRexEnv(exe, "new"),
+		Parked: inRexEnv(exe),
 	}, nil
 }
 
-// formCommand runs this binary's new. A Rex layer starts it in Rex's own
-// environment, so the variables that choose its config and state go along.
-func formCommand(exe string) []string {
+// inRexEnv runs this binary with args. Rex starts a pane's command in its
+// own environment, so the variables that choose the config and state go along.
+func inRexEnv(exe string, args ...string) []string {
 	var env []string
 	for _, name := range []string{"XDG_CONFIG_HOME", "XDG_STATE_HOME"} {
 		if value, ok := os.LookupEnv(name); ok {
 			env = append(env, name+"="+value)
 		}
 	}
+	command := slices.Concat([]string{exe}, args)
 	if env == nil {
-		return []string{exe, "new"}
+		return command
 	}
-	return slices.Concat([]string{"env"}, env, []string{exe, "new"})
+	return slices.Concat([]string{"env"}, env, command)
 }
 
 func newNewCommand(open inboxOpener) *cobra.Command {
