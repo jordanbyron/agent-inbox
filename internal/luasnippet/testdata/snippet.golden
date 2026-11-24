@@ -59,9 +59,32 @@ local function new_agent(ctx)
   })
 end
 
+local function layer_holding(window, label)
+  for _, layer in ipairs(window.layers) do
+    for _, block in ipairs(layer.blocks or {}) do
+      if block.label == label then return layer, block end
+    end
+  end
+end
+
+local function bring_forward(ctx, layer)
+  check(rex.call("session.set_layer_state", {
+    session_id = ctx.session_id,
+    layer_id = layer.layer_id,
+    state = "normal",
+    focus = true,
+  }))
+end
+
 local function toggle_modal(ctx)
   local window = this_window(ctx)
-  if close_if_open(ctx, window, modal_label) then return end
+  local layer, block = layer_holding(window, modal_label)
+  local pressed_in_modal = block ~= nil and block.block_id == ctx.block_id and layer.state ~= "minimized"
+  if pressed_in_modal then
+    check(rex.call("block.close", { session_id = ctx.session_id, block_id = block.block_id }))
+    return
+  end
+  if layer ~= nil then return bring_forward(ctx, layer) end
   check(rex.session.new_layer{
     window_id = window.window_id,
     bounds = { 0.1, 0.1, 0.8, 0.8 },
@@ -164,7 +187,7 @@ rex.action{
   title = "Agent Inbox",
   run = function(ctx, args)
     local items = {
-      { id = "modal", title = "Inbox", subtitle = "Over this tab; again to dismiss", icon = "star" },
+      { id = "modal", title = "Inbox", subtitle = "Over this tab; again from inside it to dismiss", icon = "star" },
       { id = "new", title = "New agent", icon = "plus" },
       { id = "beside", title = "Park the inbox beside this tab", subtitle = "Again to remove it", icon = "terminal" },
     }

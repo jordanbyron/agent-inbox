@@ -28,7 +28,9 @@ agent-inbox watch           the watcher (started for you)
 
 A verb with no agent acts on the agent in the current Rex block. The
 snippet's `agent_inbox_menu` action lists the commands in Rex's palette, and
-`agent_inbox_modal` shows or hides the list over the current tab.
+`agent_inbox_modal` shows the list over the current tab and focuses it. If
+the list is already open there, behind your work or minimized, it comes
+forward instead; pressed inside the list, the action closes it.
 
 ## Keys
 
