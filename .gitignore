@@ -1,0 +1,5 @@
+/agent-inbox
+/.tools/
+/.claude/worktrees/
+/.worktrees/
+/dist/
