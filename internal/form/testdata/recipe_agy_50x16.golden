@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌─ Prompt ─────────────────────────────────────┐ 
+ │ What should this agent do?                   │ 
+ │                                              │ 
+ │                                              │ 
+ └──────────────────────────────────────────────┘ 
+                                                  
+ ▶ Harness       claude   codex  [agy]            
+   Name         agent                             
+   Directory    ~/code/app                        
+   Rex session  [work]  side projects  …          
+   Model        [default]                         
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  accept-edits   auto  … 
+   Worktree      no  [yes]                        
+ ← → change  ^S start  ^O start & show            

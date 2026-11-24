@@ -15,6 +15,7 @@ func New() *cobra.Command {
 		SilenceUsage: true,
 	}
 	root.AddCommand(newVersionCommand(), newListCommand())
+	root.AddCommand(newFormCommand())
 	return root
 }
 
