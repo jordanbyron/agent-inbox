@@ -52,12 +52,12 @@ func (m Model) headerRight(room int) string {
 
 func (m Model) watcherNote() string {
 	switch {
-	case m.restarting:
-		return "starting the watcher again"
-	case m.restart != nil && m.restartErr != nil:
+	case m.restart == nil:
+		return "is the watcher running?"
+	case m.restartErr != nil && !m.restarting:
 		return "the watcher did not start"
 	default:
-		return "is the watcher running?"
+		return "starting the watcher again"
 	}
 }
 

@@ -479,6 +479,8 @@ func TestAStaleSnapshotStartsTheWatcherAgain(t *testing.T) {
 
 	t.Run("a stale one starts it, and the header says so", func(t *testing.T) {
 		s.clock = now.Add(list.StaleAfter + time.Second)
+		s.send(list.ReloadMsg{})
+		require.Contains(t, s.header(), "⚠ snapshot 16s old — starting the watcher again", "from the first frame it is stale")
 		s.send(reloadTick)
 		require.Contains(t, s.header(), "⚠ snapshot 16s old — starting the watcher again")
 
