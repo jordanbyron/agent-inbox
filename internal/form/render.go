@@ -18,6 +18,8 @@ const (
 	minPromptRows = 3
 	maxPromptRows = 10
 	menuRows      = 6
+	maxListRows   = 8
+	minListRows   = 3
 	maxNameWidth  = 36
 	placeholder   = "What should this agent do?"
 )
@@ -49,7 +51,8 @@ func (m Model) render() string {
 	if m.width <= 0 || m.height <= 0 {
 		return ""
 	}
-	rows, gaps := m.promptLayout()
+	listRows := m.listRows()
+	rows, gaps := m.promptLayout(listRows)
 	lines := []string{m.title()}
 	if gaps > 1 {
 		lines = append(lines, "")
@@ -61,6 +64,9 @@ func (m Model) render() string {
 	}
 	for _, key := range m.fields()[1:] {
 		lines = append(lines, m.fieldLine(key))
+		if key == fieldDir {
+			lines = append(lines, m.dirList(listRows)...)
+		}
 	}
 	body := m.height - 1
 	lines = lines[:min(len(lines), body)]
@@ -73,13 +79,34 @@ func (m Model) render() string {
 	return strings.Join(append(lines, m.footer()), "\n")
 }
 
-// promptLayout shares out the rows the fields leave: first a gap under the
-// prompt, then one under the title, then the rest to the prompt as it grows.
-func (m Model) promptLayout() (rows, gaps int) {
-	spare := m.height - 4 - (len(m.fields()) - 1) - minPromptRows
+// promptLayout shares out the rows the fields and the directory list leave:
+// first a gap under the prompt, then one under the title, then the rest to
+// the prompt as it grows.
+func (m Model) promptLayout(listRows int) (rows, gaps int) {
+	spare := m.height - 4 - (len(m.fields()) - 1) - minPromptRows - listRows
 	gaps = min(max(spare, 0), 2)
-	limit := min(minPromptRows+max(spare-gaps, 0), maxPromptRows)
+	limit := max(min(minPromptRows+spare-gaps, maxPromptRows), 1)
 	return min(max(m.prompt.Rows(m.promptWidth()), minPromptRows), limit), gaps
+}
+
+// listRows keeps the list's height steady while it filters, and on a short
+// layer takes rows from the prompt to keep a few.
+func (m Model) listRows() int {
+	if m.focus != fieldDir {
+		return 0
+	}
+	room := m.height - 1 - (1 + 2 + len(m.fields()) - 1)
+	return max(min(maxListRows, room-minPromptRows), min(minListRows, room-1), 0)
+}
+
+func (m Model) dirList(rows int) []string {
+	indent := strings.Repeat(" ", valueColumn-2)
+	list := m.dir.Lines(max(m.width-len(indent)-1, 1), rows)
+	out := make([]string, rows)
+	for i, line := range list {
+		out[i] = indent + line
+	}
+	return out
 }
 
 func (m Model) promptWidth() int {
@@ -260,8 +287,6 @@ func (m Model) footer() string {
 		text = m.hints("y", "discard", "esc", "keep editing")
 	case m.problem != "":
 		text = theme.Red.Render(m.problem)
-	case m.candidates != nil:
-		text = theme.Dim("matches: ") + strings.Join(m.candidates, "  ")
 	case len(m.menu()) > 0:
 		text = m.hints("↑↓", "choose", "⇥ ⏎", "pick", "esc", "close")
 	default:
@@ -271,6 +296,13 @@ func (m Model) footer() string {
 }
 
 func (m Model) keyHints() string {
+	if m.focus == fieldDir {
+		pairs := append(m.dir.Hints(), "^S", "start", "^O", "start & show")
+		if !m.dir.InList() {
+			pairs = append(pairs, "esc", "cancel")
+		}
+		return m.hints(pairs...)
+	}
 	var pairs []string
 	switch {
 	case m.focus == fieldPrompt:
@@ -278,11 +310,7 @@ func (m Model) keyHints() string {
 	case m.buffer() == nil:
 		pairs = []string{"← →", "change"}
 	}
-	next := "next"
-	if m.focus == fieldDir {
-		next = "complete"
-	}
-	pairs = append(pairs, "^S", "start", "^O", "start & show", "esc", "cancel", "⇥", next)
+	pairs = append(pairs, "^S", "start", "^O", "start & show", "esc", "cancel", "⇥", "next")
 	return m.hints(pairs...)
 }
 

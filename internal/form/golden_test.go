@@ -1,6 +1,7 @@
 package form_test
 
 import (
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,20 @@ func skills(s *screen) {
 	}
 	s.write("code/app/.claude/commands/deploy.md", "---\ndescription: Ship it to production\n---\n")
 }
+
+func projects(s *screen) {
+	s.mkdir("code/agent-inbox", "code/tria", "code/Notebook", "code/.cache", "code/app/src", "code/app/docs")
+	s.repos[filepath.Join(s.home, "code", "agent-inbox")] = true
+}
+
+func recents(s *screen) {
+	projects(s)
+	s.opts.RecentDirs = []string{
+		filepath.Join(s.home, "code", "agent-inbox"), filepath.Join(s.home, "gone"), filepath.Join(s.home, "notes"),
+	}
+}
+
+func toDirectory(s *screen) { s.typing("fix it").press("tab", "tab", "tab") }
 
 func notInRepo(s *screen) {
 	s.repos = map[string]bool{}
@@ -43,6 +58,19 @@ var frames = []struct {
 	{name: "recipe_claude", drive: func(s *screen) { s.press("tab") }},
 	{name: "recipe_codex", drive: func(s *screen) { s.press("tab", "l") }},
 	{name: "recipe_agy", drive: func(s *screen) { s.press("tab", "l", "l") }},
+	{name: "dir_browse", configure: projects, drive: func(s *screen) {
+		toDirectory(s)
+		s.press("down", "left")
+	}},
+	{name: "dir_recents", configure: recents, drive: toDirectory},
+	{name: "dir_filter", configure: projects, drive: func(s *screen) {
+		toDirectory(s)
+		s.press("ctrl+u").typing("~/code/t")
+	}},
+	{name: "dir_missing", configure: projects, drive: func(s *screen) {
+		toDirectory(s)
+		s.press("ctrl+u").typing("~/code/nope/deeper")
+	}},
 }
 
 func TestGoldenFrames(t *testing.T) {

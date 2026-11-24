@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/jordanbyron/agent-inbox/internal/dirpicker"
 	"github.com/jordanbyron/agent-inbox/internal/editor"
 	"github.com/jordanbyron/agent-inbox/internal/images"
 	"github.com/jordanbyron/agent-inbox/internal/recipe"
@@ -37,6 +37,11 @@ type Options struct {
 	CurrentSession string
 	// Dir is the directory the form starts with.
 	Dir string
+	// RecentDirs are directories agents started in before, most recent
+	// first, offered while Directory is left as it started.
+	RecentDirs []string
+	// DirFS is the filesystem Directory browses, the real one when nil.
+	DirFS dirpicker.FS
 	// WorktreeDefault is config's worktree.default: whether Worktree starts
 	// on yes in a git repository.
 	WorktreeDefault bool
@@ -133,8 +138,9 @@ type Model struct {
 	width, height int
 	focus         fieldKey
 
-	prompt, name, dir editor.Buffer
-	choices           map[fieldKey]*choice
+	prompt, name editor.Buffer
+	dir          dirpicker.Picker
+	choices      map[fieldKey]*choice
 
 	inRepo  bool
 	repoFor string
@@ -147,7 +153,6 @@ type Model struct {
 	dismissed    string
 	hasDismissed bool
 
-	candidates     []string
 	problem        string
 	confirmDiscard bool
 
@@ -167,7 +172,7 @@ func New(opts Options) Model {
 		opts:   opts,
 		prompt: editor.New(""),
 		name:   editor.New(""),
-		dir:    editor.New(shortenHome(opts.Dir, opts.Home)),
+		dir:    dirpicker.New(opts.Dir, opts.Home, opts.RecentDirs, opts.DirFS),
 		choices: map[fieldKey]*choice{
 			fieldHarness:     {},
 			fieldSession:     sessionChoice(opts.Sessions, opts.CurrentSession),
@@ -216,7 +221,7 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles a key, a paste or a resize.
+// Update handles a key, a paste, a resize or a directory read.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
@@ -226,9 +231,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.press(msg)
 	case tea.PasteMsg:
 		m.paste(msg.Content)
+	default:
+		m.dir.Update(msg)
 	}
 	m.refresh()
-	return m, cmd
+	return m, tea.Batch(cmd, m.dir.Sync(m.focus == fieldDir))
 }
 
 // refresh catches up on what follows from the Directory and Harness fields.
@@ -313,30 +320,7 @@ func (m *Model) chooseHarness() {
 }
 
 func (m Model) directory() string {
-	typed := strings.TrimSpace(m.dir.String())
-	return expandPath(typed, m.opts.Dir, m.opts.Home)
-}
-
-func expandPath(typed, base, home string) string {
-	switch {
-	case typed == "":
-		return filepath.Clean(base)
-	case typed == "~":
-		return filepath.Clean(home)
-	case strings.HasPrefix(typed, "~/"):
-		return filepath.Join(home, typed[2:])
-	case filepath.IsAbs(typed):
-		return filepath.Clean(typed)
-	default:
-		return filepath.Join(base, typed)
-	}
-}
-
-func shortenHome(dir, home string) string {
-	if home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
-		return "~" + strings.TrimPrefix(dir, home)
-	}
-	return dir
+	return m.dir.Dir()
 }
 
 func isDir(path string) bool {
