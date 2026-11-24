@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
+	"github.com/jordanbyron/agent-inbox/internal/notify"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/rex/rextest"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
@@ -166,14 +167,29 @@ func (b *syncBuffer) String() string {
 // harness is one watcher running against a fake Rex server, a fake gh, a
 // manual clock and a temporary state directory.
 type harness struct {
-	t     *testing.T
-	rex   *rextest.Fake
-	gh    *fakeGH
-	clock *manualClock
-	dir   string
-	store *state.Store
-	log   *syncBuffer
-	done  chan error
+	t        *testing.T
+	rex      *rextest.Fake
+	gh       *fakeGH
+	clock    *manualClock
+	dir      string
+	store    *state.Store
+	log      *syncBuffer
+	done     chan error
+	cfg      config.Config
+	notifier *fakeNotifier
+}
+
+type fakeNotifier struct {
+	sent chan notify.Notification
+}
+
+func newFakeNotifier() *fakeNotifier {
+	return &fakeNotifier{sent: make(chan notify.Notification, 16)}
+}
+
+func (f *fakeNotifier) Notify(_ context.Context, n notify.Notification) error {
+	f.sent <- n
+	return nil
 }
 
 func newHarness(t *testing.T) *harness {
@@ -187,6 +203,7 @@ func newHarness(t *testing.T) *harness {
 		dir:   dir,
 		store: state.New(dir),
 		log:   &syncBuffer{},
+		cfg:   config.Default(),
 	}
 }
 
@@ -201,9 +218,12 @@ func (h *harness) start() {
 		Git:      worktree.ExecGit{},
 		Clock:    h.clock,
 		StateDir: h.dir,
-		Config:   config.Default(),
+		Config:   h.cfg,
 		Version:  "v-test",
 		Log:      slog.New(slog.NewTextHandler(h.log, nil)),
+	}
+	if h.notifier != nil {
+		opts.Notifier = h.notifier
 	}
 	go func() { h.done <- watcher.Run(ctx, opts) }()
 	h.t.Cleanup(func() {

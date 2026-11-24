@@ -38,6 +38,7 @@ func newWatchCommand() *cobra.Command {
 				return err
 			}
 			defer func() { _ = log.Close() }()
+			logger := slog.New(slog.NewTextHandler(log, nil))
 			return watcher.Run(ctx, watcher.Options{
 				Rex:      srv.rex,
 				GH:       pulls.GH{},
@@ -46,7 +47,8 @@ func newWatchCommand() *cobra.Command {
 				StateDir: srv.dir,
 				Config:   cfg,
 				Version:  version(),
-				Log:      slog.New(slog.NewTextHandler(log, nil)),
+				Log:      logger,
+				Notifier: desktopNotifier(cfg, logger),
 			})
 		},
 	}

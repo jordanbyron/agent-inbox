@@ -13,6 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
+	"github.com/jordanbyron/agent-inbox/internal/notify"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
@@ -51,6 +52,11 @@ type watcher struct {
 
 	lastBody []byte
 	wroteAt  time.Time
+
+	notifier Notifier
+	// moments are the families at the last observation, nil before the first.
+	moments map[string]moment
+	notes   chan notify.Notification
 }
 
 func newWatcher(opts Options, store *state.Store) (*watcher, error) {
@@ -58,7 +64,7 @@ func newWatcher(opts Options, store *state.Store) (*watcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &watcher{
+	w := &watcher{
 		rex:     opts.Rex,
 		store:   store,
 		dir:     opts.StateDir,
@@ -77,7 +83,12 @@ func newWatcher(opts Options, store *state.Store) (*watcher, error) {
 		st:         st,
 		statuses:   map[string]triage.Status{},
 		unclosable: map[string]bool{},
-	}, nil
+		notes:      make(chan notify.Notification, pendingNotifications),
+	}
+	if opts.Config.Notify {
+		w.notifier = opts.Notifier
+	}
+	return w, nil
 }
 
 // run is the loop. It returns once ctx ends or the Rex server goes away,
@@ -88,6 +99,9 @@ func (w *watcher) run(ctx context.Context) error {
 	findings := make(chan finding)
 	var wg sync.WaitGroup
 	wg.Go(func() { w.finder.work(ctx, jobs, findings) })
+	if w.notifier != nil {
+		wg.Go(func() { w.sendNotifications(ctx, w.notifier) })
+	}
 
 	events, ended := w.rex.Events(ctx)
 	defer func() {
@@ -247,6 +261,9 @@ func (w *watcher) settle(ctx context.Context) {
 	w.record(now)
 	if w.autoSettle(ctx, now) {
 		w.record(now)
+	}
+	if w.notifier != nil {
+		w.notifyChanges(now)
 	}
 	w.publish(now)
 }

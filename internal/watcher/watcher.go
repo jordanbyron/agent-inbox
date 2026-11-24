@@ -46,6 +46,8 @@ type Options struct {
 	Version string
 	// Log is where the watcher says what it did; nil discards it.
 	Log *slog.Logger
+	// Notifier sends what Config.Notify asks for; nil sends nothing.
+	Notifier Notifier
 }
 
 // Run takes the watcher lock and watches Rex until ctx ends or the Rex
