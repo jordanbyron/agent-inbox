@@ -45,7 +45,7 @@ func (e *Entry) Observe(a Agent, now time.Time) {
 		e.LastState = a.Status
 		e.StateSince = at
 	}
-	if pr, ok := a.headline(); ok && pr.Health != HealthUnknown && pr.Health != e.prHealthOrClean() {
+	if pr, ok := a.Headline(); ok && pr.Health != HealthUnknown && pr.Health != e.prHealthOrClean() {
 		e.PRHealth = pr.Health
 		if pr.Health == HealthClean {
 			e.PRHealth = HealthUnknown

@@ -57,6 +57,21 @@ func (s *Store) TakeWatcherLock(version string) (*WatcherLock, error) {
 	return &WatcherLock{file: file}, nil
 }
 
+// WatcherHolder returns the watcher last written into watcher.lock, without
+// taking the lock, so it may since have exited. With no lock file yet, the
+// error wraps fs.ErrNotExist.
+func (s *Store) WatcherHolder() (HeldError, error) {
+	data, err := os.ReadFile(s.path("watcher.lock"))
+	if err != nil {
+		return HeldError{}, fmt.Errorf("reading the watcher lock: %w", err)
+	}
+	var held HeldError
+	if err := json.Unmarshal(data, &held); err != nil {
+		return HeldError{}, fmt.Errorf("reading the watcher lock: %w", err)
+	}
+	return held, nil
+}
+
 // Close releases the watcher lock.
 func (l *WatcherLock) Close() error {
 	if err := l.file.Close(); err != nil {

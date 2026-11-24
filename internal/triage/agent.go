@@ -100,7 +100,10 @@ func (a Agent) ownPullRequests() []PullRequest {
 	return own
 }
 
-func (a Agent) headline() (PullRequest, bool) {
+// Headline returns the pull request the agent's row leads with: one that
+// wants you back, then a conflicting one, then an open one, then a resolved
+// one, with mentions last.
+func (a Agent) Headline() (PullRequest, bool) {
 	rank := func(pr PullRequest) int {
 		switch {
 		case a.isMention(pr):

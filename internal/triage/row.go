@@ -52,7 +52,7 @@ func (r Row) Settled() bool {
 // PRNeedsYou reports whether the headline pull request has failing checks or
 // changes requested and the agent has stopped working on it.
 func (r Row) PRNeedsYou() bool {
-	pr, ok := r.Agent.headline()
+	pr, ok := r.Agent.Headline()
 	return ok && r.Agent.Status != StatusWorking && pr.NeedsYou()
 }
 
