@@ -48,7 +48,7 @@ type watcher struct {
 	queue      []job
 	refreshing bool
 	lastScan   time.Time
-	// unclosable are windows Rex refused to close, not asked again.
+	// unclosable are blocks Rex refused to close, not asked again.
 	unclosable map[string]bool
 
 	lastBody []byte
@@ -352,24 +352,30 @@ func findJob(a agent) job {
 	return captureJob{key: a.key, sessionID: a.sessionID, blockID: a.block.id}
 }
 
-// autoSettle closes the tabs of every family whose work has landed, and
+// autoSettle closes the blocks of every family whose work has landed, and
 // reports whether it closed any. The observation after it settles them.
 func (w *watcher) autoSettle(ctx context.Context, now time.Time) bool {
-	closed := map[string]bool{}
+	closed := false
 	for _, c := range toAutoSettle(w.agents, w.st, now) {
-		if closed[c.windowID] || w.unclosable[c.windowID] {
+		if w.unclosable[c.blockID] {
 			continue
 		}
-		if err := w.rex.CloseWindow(ctx, c.sessionID, c.windowID); err != nil {
-			w.log.Error("closing a tab", "agent", c.key, "window", c.windowID, "err", err)
-			w.unclosable[c.windowID] = true
+		alone := w.world.alone(c.sessionID, c.windowID)
+		if err := rex.CloseAgent(ctx, w.rex, c.sessionID, c.windowID, c.blockID, alone); err != nil {
+			w.log.Error("closing a tab", "agent", c.key, "window", c.windowID, "block", c.blockID, "err", err)
+			w.unclosable[c.blockID] = true
 			continue
 		}
-		w.log.Info("closed a tab", "agent", c.key, "session", c.sessionID, "window", c.windowID, "reason", c.reason)
-		closed[c.windowID] = true
-		w.world.removeWindow(c.sessionID, c.windowID)
+		w.log.Info("closed a tab", "agent", c.key, "session", c.sessionID, "window", c.windowID,
+			"block", c.blockID, "whole_tab", alone, "reason", c.reason)
+		closed = true
+		if alone {
+			w.world.removeWindow(c.sessionID, c.windowID)
+		} else {
+			w.world.removeBlock(c.sessionID, c.blockID)
+		}
 	}
-	return len(closed) > 0
+	return closed
 }
 
 // publish writes the snapshot when it changed or the heartbeat is due.

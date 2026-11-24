@@ -251,8 +251,6 @@ func (p places) placeOf(a agent) (place, bool) {
 	return found, ok
 }
 
-// A block alone in its window takes the window with it; one sharing a
-// window with your other panes closes by itself, so they stay.
 func (in *Inbox) closeBlocks(ctx context.Context, members []agent) error {
 	all, err := in.places(ctx)
 	if err != nil {
@@ -263,11 +261,7 @@ func (in *Inbox) closeBlocks(ctx context.Context, members []agent) error {
 		if !ok {
 			continue
 		}
-		if p.alone {
-			err = in.Rex.CloseWindow(ctx, p.session, p.window)
-		} else {
-			err = in.Rex.CloseBlock(ctx, p.session, p.block)
-		}
+		err := rex.CloseAgent(ctx, in.Rex, p.session, p.window, p.block, p.alone)
 		if err != nil && !errors.Is(err, rex.ErrNotFound) {
 			return fmt.Errorf("closing the tab of %s: %w", m.key, err)
 		}

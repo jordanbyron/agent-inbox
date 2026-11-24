@@ -79,6 +79,20 @@ func (w *world) block(sessionID, blockID string) *block {
 	return nil
 }
 
+func (w *world) alone(sessionID, windowID string) bool {
+	s := w.sessions[sessionID]
+	if s == nil {
+		return false
+	}
+	n := 0
+	for _, b := range s.blocks {
+		if b.windowID == windowID {
+			n++
+		}
+	}
+	return n == 1
+}
+
 func (w *world) removeBlock(sessionID, blockID string) {
 	if s := w.sessions[sessionID]; s != nil {
 		delete(s.blocks, blockID)

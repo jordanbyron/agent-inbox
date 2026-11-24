@@ -126,3 +126,30 @@ func TestAutoSettleHeldWhileAnyRecordWorksOrFails(t *testing.T) {
 		})
 	}
 }
+
+func TestAutoSettleClosesOnlyTheAgentInASplitTab(t *testing.T) {
+	h := newHarness(t)
+	work := h.rex.AddSession("work")
+	editor, _ := h.tab(work, "")
+	tab, block := h.tab(work, "agent-inbox:a1")
+	shell, err := h.rex.AddBlock(work, tab, "")
+	require.NoError(t, err)
+	app := h.rex.AddApp("Rex", work)
+	require.NoError(t, h.rex.SetStatus(work, block, idle))
+	h.gh.set(912, ghPR{state: "MERGED", closedAt: t0}, "")
+	h.edit(func(st *state.State) {
+		st.Records["a1"] = launched(work, "/r/app")
+		st.PullRequests["a1"] = []state.PullRequest{{URL: prURL(912), Number: 912, Source: state.SourceCapture}}
+	})
+	h.start()
+	require.NoError(t, h.rex.Display(app, work, editor))
+	h.clock.Advance(time.Second)
+
+	h.waitSection("a1", settled)
+	require.Empty(t, h.rex.ClosedWindows())
+	require.Equal(t, []string{block}, h.rex.ClosedBlocks())
+	view, err := h.rex.View(t.Context(), work)
+	require.NoError(t, err)
+	require.Len(t, view.Windows, 2)
+	require.Equal(t, shell, view.Windows[1].Blocks[0].ID, "the shell beside the agent stays")
+}

@@ -11,15 +11,16 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/triage"
 )
 
-// closing is a tab auto-settle closes, and why.
+// closing is an agent's block auto-settle closes, and why.
 type closing struct {
 	key       string
 	sessionID string
 	windowID  string
+	blockID   string
 	reason    string
 }
 
-// toAutoSettle returns the tabs to close for every family whose work has
+// toAutoSettle returns the blocks to close for every family whose work has
 // landed. Only a launched root can settle its family: a found agent has no
 // start time, so none of its pull requests can be known to be its own.
 func toAutoSettle(agents []agent, st *state.State, now time.Time) []closing {
@@ -50,7 +51,7 @@ func toAutoSettle(agents []agent, st *state.State, now time.Time) []closing {
 		reason := "its pull requests resolved: " + resolved(prs)
 		for _, a := range fam.members() {
 			if a.live() {
-				out = append(out, closing{key: a.key, sessionID: a.sessionID, windowID: a.block.windowID, reason: reason})
+				out = append(out, closing{key: a.key, sessionID: a.sessionID, windowID: a.block.windowID, blockID: a.block.id, reason: reason})
 			}
 		}
 	}
