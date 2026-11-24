@@ -192,3 +192,77 @@ func TestSweepDeletesWhatIsDueAndKeepsWhatRefuses(t *testing.T) {
 		})
 	}
 }
+
+// The sweep picks families from a state it read earlier, so a family
+// changed since must survive it.
+func TestSweepKeepsAFamilyThatChangedSinceItLooked(t *testing.T) {
+	cases := []struct {
+		name   string
+		change func(t *testing.T, in *verbs.Inbox)
+	}{
+		{
+			name: "restored",
+			change: func(t *testing.T, in *verbs.Inbox) {
+				startTab(t, in, "a1")
+				require.NoError(t, in.Store.Update(func(st *state.State) error {
+					e := st.Entries["a1"]
+					e.Wake(triage.Agent{}, now)
+					st.Entries["a1"] = e
+					return nil
+				}))
+			},
+		},
+		{
+			name:   "restoring, with its tab open before its state is written",
+			change: func(t *testing.T, in *verbs.Inbox) { startTab(t, in, "a1") },
+		},
+		{
+			name: "pinned",
+			change: func(t *testing.T, in *verbs.Inbox) {
+				_, _, err := in.TogglePin(t.Context(), verbs.Target{Key: "a1"})
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "snoozed",
+			change: func(t *testing.T, in *verbs.Inbox) {
+				_, err := in.Snooze(t.Context(), verbs.Target{Key: "a1"}, verbs.Snooze{UntilWoken: true})
+				require.NoError(t, err)
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			in := inboxOverRealGit(t)
+			repo, err := filepath.EvalSymlinks(t.TempDir())
+			require.NoError(t, err)
+			git(t, repo, "init", "--quiet", "--initial-branch=main")
+			git(t, repo, "commit", "--quiet", "--allow-empty", "-m", "first")
+			path := settledAgentInWorktree(t, in, repo, "a1")
+			st, err := in.Store.Read()
+			require.NoError(t, err)
+			c.change(t, in)
+
+			results := (&reap.Reaper{Deleter: in}).Sweep(t.Context(), st, now)
+
+			require.Len(t, results, 1)
+			require.Error(t, results[0].Err)
+			require.DirExists(t, path)
+			fake, ok := in.Rex.(*rextest.Fake)
+			require.True(t, ok)
+			require.Empty(t, fake.ClosedWindows())
+			require.Empty(t, fake.ClosedBlocks())
+			after, err := in.Store.Read()
+			require.NoError(t, err)
+			require.Contains(t, after.Records, "a1")
+		})
+	}
+}
+
+// startTab gives agent id a tab of its own, as a restore does before it
+// writes the state.
+func startTab(t *testing.T, in *verbs.Inbox, id string) {
+	t.Helper()
+	_, err := in.Rex.Start(t.Context(), rex.StartOptions{BlockLabel: verbs.BlockLabel(id), WindowLabel: id})
+	require.NoError(t, err)
+}
