@@ -115,7 +115,7 @@ func (in *Inbox) resume(ctx context.Context, a agent) (Agent, rex.Started, error
 		rec.RexSession = started.SessionID
 		st.Records[a.key] = rec
 		e := st.Entries[a.key]
-		e.Wake(triage.Agent{PullRequests: triagePullRequests(st, a.key)}, in.Now())
+		e.Wake(triage.Agent{PullRequests: familyPullRequests(st, a)}, in.Now())
 		st.Entries[a.key] = e
 		out = describe(st, a)
 		return nil

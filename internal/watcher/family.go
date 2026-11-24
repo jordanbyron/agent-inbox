@@ -99,3 +99,17 @@ func familyAgent(root triage.Agent, children []triage.Agent) triage.Agent {
 	}
 	return fam
 }
+
+// familyEntry is the root's entry as auto-settle sees it: revived when any
+// member was, and holding for every pull request any revive remembered.
+func familyEntry(root triage.Entry, children []triage.Entry) triage.Entry {
+	fam := root
+	fam.RevivedPRs = slices.Clone(root.RevivedPRs)
+	for _, c := range children {
+		if c.RevivedAt.After(fam.RevivedAt) {
+			fam.RevivedAt = c.RevivedAt
+		}
+		fam.RevivedPRs = append(fam.RevivedPRs, c.RevivedPRs...)
+	}
+	return fam
+}

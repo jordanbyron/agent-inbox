@@ -263,3 +263,30 @@ func TestARestoredAgentWhoseTabClosesSettles(t *testing.T) {
 	h.clock.Advance(time.Second)
 	require.Eventually(t, func() bool { return !h.state().Entries["a1"].SettledAt.IsZero() }, waitFor, time.Millisecond)
 }
+
+func TestAutoSettleHoldsForARestoredChild(t *testing.T) {
+	h := newHarness(t)
+	work := h.rex.AddSession("work")
+	editor, _ := h.tab(work, "")
+	_, rootBlock := h.tab(work, "agent-inbox:a1")
+	_, childBlock := h.tab(work, "agent-inbox:a2")
+	app := h.rex.AddApp("Rex", work)
+	require.NoError(t, h.rex.SetStatus(work, rootBlock, idle))
+	require.NoError(t, h.rex.SetStatus(work, childBlock, idle))
+	h.edit(func(st *state.State) {
+		st.Records["a1"] = launched(work, "/r/app")
+		child := launched(work, "/r/app-child")
+		child.Parent = "a1"
+		st.Records["a2"] = child
+		st.PullRequests["a1"] = []state.PullRequest{{
+			URL: prURL(912), Number: 912, State: state.PRStateMerged, ResolvedAt: t0, Source: state.SourceCapture,
+		}}
+		st.Entries["a2"] = triage.Entry{RevivedAt: t0, RevivedPRs: []string{prURL(912)}}
+	})
+	h.start()
+	require.NoError(t, h.rex.Display(app, work, editor))
+	h.waitLog(heardApp)
+	h.heartbeat()
+
+	require.Empty(t, h.rex.ClosedWindows(), "the child was restored to ask it something")
+}

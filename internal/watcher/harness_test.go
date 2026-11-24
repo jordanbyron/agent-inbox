@@ -385,3 +385,15 @@ func fileInfo(t *testing.T, path string) os.FileInfo {
 
 // heardApp is what the watcher logs once it knows which tab an app shows.
 const heardApp = "heard which tab a Rex app shows"
+
+// heartbeat moves the clock to the next heartbeat and waits for its
+// snapshot, which comes after everything the watcher had heard by then.
+func (h *harness) heartbeat() {
+	h.t.Helper()
+	h.clock.Advance(watcher.HeartbeatEvery)
+	now := h.clock.Now()
+	require.Eventually(h.t, func() bool {
+		_, at, ok := h.readSnapshot()
+		return ok && !at.Before(now)
+	}, waitFor, time.Millisecond, "no heartbeat at %s", now)
+}

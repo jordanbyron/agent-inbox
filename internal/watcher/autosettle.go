@@ -32,18 +32,20 @@ func toAutoSettle(agents []agent, st *state.State, now time.Time) []closing {
 		}
 		entry := st.Entries[root.key]
 		var children []triage.Agent
+		var childEntries []triage.Entry
 		shown := root.seen
 		var prs []state.PullRequest
 		for _, a := range fam.members() {
 			prs = append(prs, pulls.Effective(st.PullRequests[a.key])...)
 			if a.key != root.key {
 				children = append(children, a.triage(st.Entries[a.key], st.PullRequests[a.key]))
+				childEntries = append(childEntries, st.Entries[a.key])
 				shown = shown || a.seen
 			}
 		}
 		row := triage.Row{
 			Agent: familyAgent(root.triage(entry, st.PullRequests[root.key]), children),
-			Entry: entry,
+			Entry: familyEntry(entry, childEntries),
 		}
 		if !row.ShouldAutoSettle(now, shown) {
 			continue

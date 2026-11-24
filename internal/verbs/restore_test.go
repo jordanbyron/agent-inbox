@@ -216,3 +216,37 @@ func TestListActions(t *testing.T) {
 
 	require.ErrorContains(t, actions.Wake("a1"), `no agent "a1"`)
 }
+
+// Auto-settle weighs the whole family's pull requests, so a revive has to
+// remember all of them, whichever member it brings back.
+func TestReviveRemembersTheFamilysResolvedPullRequests(t *testing.T) {
+	cases := []struct {
+		name        string
+		rootRunning bool
+		target      string
+	}{
+		{name: "restoring the root", target: "a1"},
+		{name: "restoring a closed child", rootRunning: true, target: "a2"},
+		{name: "waking the running root", rootRunning: true, target: "a1"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := newWorld(t)
+			w.launch(t, "a1", state.Record{SessionID: "s-1"}, c.rootRunning)
+			w.launch(t, "a2", state.Record{SessionID: "s-2", Parent: "a1"}, false)
+			merged := func(n string) state.PullRequest {
+				return state.PullRequest{URL: "https://github.com/o/r/pull/" + n, State: state.PRStateMerged, ResolvedAt: began}
+			}
+			require.NoError(t, w.store.Update(func(st *state.State) error {
+				st.PullRequests["a1"] = []state.PullRequest{merged("1")}
+				st.PullRequests["a2"] = []state.PullRequest{merged("2")}
+				return nil
+			}))
+
+			_, _, err := w.inbox.Wake(t.Context(), verbs.Target{Key: c.target})
+
+			require.NoError(t, err)
+			require.ElementsMatch(t, []string{merged("1").URL, merged("2").URL}, w.entry(t, c.target).RevivedPRs)
+		})
+	}
+}

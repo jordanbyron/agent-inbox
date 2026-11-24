@@ -175,7 +175,7 @@ func (in *Inbox) edit(a agent, fn func(*triage.Entry, []triage.PullRequest)) (Ag
 			return err
 		}
 		e := st.Entries[a.key]
-		fn(&e, triagePullRequests(st, a.key))
+		fn(&e, familyPullRequests(st, a))
 		st.Entries[a.key] = e
 		out = describe(st, a)
 		return nil
@@ -192,10 +192,14 @@ func stillThere(st *state.State, a agent) error {
 	return nil
 }
 
-func triagePullRequests(st *state.State, key string) []triage.PullRequest {
+// familyPullRequests are the pull requests of every member of a's family,
+// since auto-settle weighs them together.
+func familyPullRequests(st *state.State, a agent) []triage.PullRequest {
 	var prs []triage.PullRequest
-	for _, pr := range st.PullRequests[key] {
-		prs = append(prs, pr.Triage())
+	for _, m := range family(st, root(st, a)) {
+		for _, pr := range st.PullRequests[m.key] {
+			prs = append(prs, pr.Triage())
+		}
 	}
 	return prs
 }
