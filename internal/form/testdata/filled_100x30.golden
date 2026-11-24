@@ -1,0 +1,30 @@
+ New agent                                                                                          
+                                                                                                    
+ ┌─ Prompt ───────────────────────────────────────────────────────────────────────────────────────┐ 
+ │ fix the login redirect loop that sends people back to the sign-in page after their session     │ 
+ │ expires, see [Image #1]                                                                        │ 
+ │                                                                                                │ 
+ └────────────────────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                    
+   Harness      [claude]  codex   agy                                                               
+   Name         fix-the-login-redirect                                                              
+   Directory    ~/code/app                                                                          
+   Rex session   work  [side projects]  new session                                                 
+   Model         default   fable  [opus]  sonnet   haiku                                            
+   Effort        default   low   medium   high  [xhigh]  max                                        
+ ▶ Permissions   default  [acceptEdits]  auto   plan   bypassPermissions                            
+   Worktree      no  [yes]                                                                          
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ ← → change  ^S start  ^O start & show  esc cancel  ⇥ next                                          

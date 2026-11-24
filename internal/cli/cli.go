@@ -17,6 +17,8 @@ func New() *cobra.Command {
 		SilenceUsage: true,
 	}
 	root.AddCommand(newVersionCommand(), newListCommand(), newLsCommand(), newWatchCommand())
+	root.AddCommand(newFormCommand())
+	root.AddCommand(verbCommands(openInbox)...)
 	return root
 }
 

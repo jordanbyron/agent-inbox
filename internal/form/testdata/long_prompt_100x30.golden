@@ -1,0 +1,30 @@
+ New agent                                                                                          
+                                                                                                    
+ ┌▶ Prompt ───────────────────────────────────────────────────────────────────────────── ↑ 5 more ┐ 
+ │ step 6: and then some more words and then some more words                                      │ 
+ │ step 7: and then some more words and then some more words                                      │ 
+ │ step 8: and then some more words and then some more words                                      │ 
+ │ step 9: and then some more words and then some more words                                      │ 
+ │ step 10: and then some more words and then some more words                                     │ 
+ │ step 11: and then some more words and then some more words                                     │ 
+ │ step 12: and then some more words and then some more words                                     │ 
+ │ step 13: and then some more words and then some more words                                     │ 
+ │ step 14: and then some more words and then some more words                                     │ 
+ │ done                                                                                           │ 
+ └────────────────────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                    
+   Harness      [claude]  codex   agy                                                               
+   Name         step-1-and-then                                                                     
+   Directory    ~/code/app                                                                          
+   Rex session  [work]  side projects   new session                                                 
+   Model        [default]  fable   opus   sonnet   haiku                                            
+   Effort       [default]  low   medium   high   xhigh   max                                        
+   Permissions  [default]  acceptEdits   auto   plan   bypassPermissions                            
+   Worktree      no  [yes]                                                                          
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ ⏎ newline  ^V image  ^S start  ^O start & show  esc cancel  ⇥ next                                 

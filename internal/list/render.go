@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jordanbyron/agent-inbox/internal/theme"
+
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -21,17 +23,17 @@ var liveSections = []triage.Section{
 }
 
 func (m Model) header(snap snapshot.Snapshot) string {
-	brand := " " + cyan.Bold(true).Render("▌ agent-inbox")
-	right := m.headerRight(m.width - width(brand) - 3)
-	room := m.width - width(brand) - width(right) - 3
+	brand := " " + theme.Cyan.Bold(true).Render("▌ agent-inbox")
+	right := m.headerRight(m.width - theme.Width(brand) - 3)
+	room := m.width - theme.Width(brand) - theme.Width(right) - 3
 	chips := m.chips(snap, false)
-	if width(chips) > room {
+	if theme.Width(chips) > room {
 		chips = m.chips(snap, true)
 	}
-	if width(chips) > room {
+	if theme.Width(chips) > room {
 		chips = ""
 	}
-	return pad(brand+"   "+chips, m.width-width(right)) + right
+	return theme.Pad(brand+"   "+chips, m.width-theme.Width(right)) + right
 }
 
 func (m Model) headerRight(room int) string {
@@ -39,10 +41,10 @@ func (m Model) headerRight(room int) string {
 	switch {
 	case status == "":
 		return ""
-	case width(status) < room:
-		return dim(status) + " "
+	case theme.Width(status) < room:
+		return theme.Dim(status) + " "
 	case room > 1:
-		return dim(truncate(status, room-1)) + " "
+		return theme.Dim(theme.Truncate(status, room-1)) + " "
 	default:
 		return ""
 	}
@@ -52,9 +54,9 @@ func (m Model) chips(snap snapshot.Snapshot, compact bool) string {
 	if m.stale() {
 		old := age(m.now().Sub(m.writtenAt))
 		if compact {
-			return red.Bold(true).Render("⚠ " + old + " old")
+			return theme.Red.Bold(true).Render("⚠ " + old + " old")
 		}
-		return red.Bold(true).Render("⚠ snapshot " + old + " old — is the watcher running?")
+		return theme.Red.Bold(true).Render("⚠ snapshot " + old + " old — is the watcher running?")
 	}
 	if !m.loaded {
 		return ""
@@ -89,39 +91,39 @@ func (m Model) chips(snap snapshot.Snapshot, compact bool) string {
 		return hue.Render(glyph + " " + strconv.Itoa(n) + " " + words)
 	}
 	chips := slices.DeleteFunc([]string{
-		chip(count[triage.SectionPinned], "★", "pinned", cyan.Bold(true)),
-		chip(count[triage.SectionNeedsYou], "●", needs, red.Bold(true)),
-		chip(working, "✻", "working", yellow),
-		chip(waiting, "◌", "waiting", yellow),
-		chip(count[triage.SectionSnoozed], "z", "snoozed", purple),
-		chip(count[triage.SectionSettled], "◦", "settled", faint),
+		chip(count[triage.SectionPinned], "★", "pinned", theme.Cyan.Bold(true)),
+		chip(count[triage.SectionNeedsYou], "●", needs, theme.Red.Bold(true)),
+		chip(working, "✻", "working", theme.Yellow),
+		chip(waiting, "◌", "waiting", theme.Yellow),
+		chip(count[triage.SectionSnoozed], "z", "snoozed", theme.Purple),
+		chip(count[triage.SectionSettled], "◦", "settled", theme.Faint),
 	}, func(s string) bool { return s == "" })
 	if len(snap.Rows()) == 0 {
-		chips = append(chips, dim("nothing running"))
+		chips = append(chips, theme.Dim("nothing running"))
 	}
 	if compact {
 		return strings.Join(chips, "  ")
 	}
-	return strings.Join(chips, dim("  ·  "))
+	return strings.Join(chips, theme.Dim("  ·  "))
 }
 
 func (m Model) footer() string {
 	var text string
 	switch {
 	case m.filtering:
-		text = " " + keyName("/") + m.filter.View()
+		text = " " + theme.KeyName("/") + m.filter.View()
 	case m.filter.Value() != "":
-		text = " " + keyName("/") + m.filter.Value() + dim("  esc clears")
+		text = " " + theme.KeyName("/") + m.filter.Value() + theme.Dim("  esc clears")
 	default:
 		var hints []string
 		for _, b := range bindings {
 			if b.footerKey != "" {
-				hints = append(hints, keyName(b.footerKey)+" "+dim(b.footerHelp))
+				hints = append(hints, theme.KeyName(b.footerKey)+" "+theme.Dim(b.footerHelp))
 			}
 		}
 		text = " " + strings.Join(hints, "  ")
 	}
-	return pad(text, m.width)
+	return theme.Pad(text, m.width)
 }
 
 type bodyLine struct {
@@ -139,14 +141,14 @@ func (m Model) body(snap snapshot.Snapshot) []bodyLine {
 		return out
 	}
 	if !m.loaded {
-		return message(plain.Bold(true).Render("No snapshot yet."), dim("The watcher writes one once it starts."))
+		return message(theme.Plain.Bold(true).Render("No snapshot yet."), theme.Dim("The watcher writes one once it starts."))
 	}
 	if len(snap.Rows()) == 0 {
 		if q := m.filter.Value(); q != "" {
-			return message(plain.Bold(true).Render("Nothing matches “"+q+"”."), dim("Esc clears the filter."))
+			return message(theme.Plain.Bold(true).Render("Nothing matches “"+q+"”."), theme.Dim("Esc clears the filter."))
 		}
-		return message(plain.Bold(true).Render("Nothing running."),
-			dim("Press ")+cyan.Render("n")+dim(" to start an agent, or run one in a Rex tab."))
+		return message(theme.Plain.Bold(true).Render("Nothing running."),
+			theme.Dim("Press ")+theme.Cyan.Render("n")+theme.Dim(" to start an agent, or run one in a Rex tab."))
 	}
 	var lines []bodyLine
 	for _, sec := range snap.Sections {
@@ -180,8 +182,8 @@ func (m Model) sectionTitle(section triage.Section, count int) string {
 	hue := sectionStyles[section]
 	title := " " + sectionTitles[section] + " "
 	n := " " + strconv.Itoa(count) + " "
-	fill := max(m.width-3-width(title)-width(n), 0)
-	return " " + hue.Render("▎") + hue.Bold(true).Render(title) + dim(strings.Repeat("─", fill)) + dim(n)
+	fill := max(m.width-3-theme.Width(title)-theme.Width(n), 0)
+	return " " + hue.Render("▎") + hue.Bold(true).Render(title) + theme.Dim(strings.Repeat("─", fill)) + theme.Dim(n)
 }
 
 func (m Model) foldLine(section triage.Section, count int) string {
@@ -189,11 +191,11 @@ func (m Model) foldLine(section triage.Section, count int) string {
 	marker := " "
 	hint := ""
 	if selected {
-		marker = yellow.Bold(true).Render("▶")
-		hint = dim("   ⏎ or zo to expand")
+		marker = theme.Yellow.Bold(true).Render("▶")
+		hint = theme.Dim("   ⏎ or zo to expand")
 	}
 	summary := "… " + strconv.Itoa(count) + " " + strings.ToLower(sectionTitles[section])
-	return " " + marker + " " + dim(summary) + hint
+	return " " + marker + " " + theme.Dim(summary) + hint
 }
 
 func (m Model) rowLines(row snapshot.Row, section triage.Section, child bool) []string {
@@ -204,9 +206,9 @@ func (m Model) rowLines(row snapshot.Row, section triage.Section, child bool) []
 	marker := " "
 	switch {
 	case selected:
-		marker = yellow.Bold(true).Render("▶")
+		marker = theme.Yellow.Bold(true).Render("▶")
 	case unread:
-		marker = blue.Render("●")
+		marker = theme.Blue.Render("●")
 	}
 	indent := ""
 	if child {
@@ -220,23 +222,23 @@ func (m Model) rowLines(row snapshot.Row, section triage.Section, child bool) []
 		if pr != "" {
 			gap = "  "
 		}
-		labelWidth := max(m.width-width(lead)-width(gap)-width(pr)-1, 0)
-		label := styleLabel(truncate(row.Label, labelWidth), row, quiet, selected || unread)
-		return []string{lead + pad(label, labelWidth) + gap + pr + " "}
+		labelWidth := max(m.width-theme.Width(lead)-theme.Width(gap)-theme.Width(pr)-1, 0)
+		label := styleLabel(theme.Truncate(row.Label, labelWidth), row, quiet, selected || unread)
+		return []string{lead + theme.Pad(label, labelWidth) + gap + pr + " "}
 	}
 
 	meta := m.meta(row, section)
-	chrome := width(lead) + 2 + width(meta) + 2 + 1
+	chrome := theme.Width(lead) + 2 + theme.Width(meta) + 2 + 1
 	// The project gives way only once the label has given up all its room,
 	// so the row never runs past the screen.
-	project := truncate(projectName(row.Dir), max(m.width-chrome, 0))
-	labelWidth := max(m.width-chrome-width(project), 0)
-	label := styleLabel(truncate(row.Label, labelWidth), row, quiet, selected || unread)
-	projectHue := cyan
+	project := theme.Truncate(projectName(row.Dir), max(m.width-chrome, 0))
+	labelWidth := max(m.width-chrome-theme.Width(project), 0)
+	label := styleLabel(theme.Truncate(row.Label, labelWidth), row, quiet, selected || unread)
+	projectHue := theme.Cyan
 	if quiet {
-		projectHue = faint
+		projectHue = theme.Faint
 	}
-	first := lead + pad(label, labelWidth) + "  " + meta + "  " + projectHue.Render(project) + " "
+	first := lead + theme.Pad(label, labelWidth) + "  " + meta + "  " + projectHue.Render(project) + " "
 	if !live {
 		return []string{first}
 	}
@@ -245,7 +247,7 @@ func (m Model) rowLines(row snapshot.Row, section triage.Section, child bool) []
 		detail = m.shortPath(row.Dir)
 	}
 	arrow := "       " + indent + "↳ "
-	return []string{first, dim(arrow + truncate(detail, max(m.width-width(arrow)-1, 0)))}
+	return []string{first, theme.Dim(arrow + theme.Truncate(detail, max(m.width-theme.Width(arrow)-1, 0)))}
 }
 
 func projectName(dir string) string {
@@ -265,10 +267,10 @@ func (m Model) shortPath(dir string) string {
 // Bold marks an unread row, as a mail client does, and the selected one.
 // An alias is italic, so a name you gave reads as yours.
 func styleLabel(label string, row snapshot.Row, quiet, bold bool) string {
-	style := plain
+	style := theme.Plain
 	switch {
 	case quiet:
-		return dim(label)
+		return theme.Dim(label)
 	case row.Alias != "":
 		style = style.Italic(true)
 	}
@@ -278,26 +280,26 @@ func styleLabel(label string, row snapshot.Row, quiet, bold bool) string {
 func (m Model) glyph(row snapshot.Row, section triage.Section) string {
 	switch {
 	case section == triage.SectionSnoozed:
-		return purple.Render("z")
+		return theme.Purple.Render("z")
 	case section == triage.SectionSettled || row.Closed:
-		return dim("◦")
+		return theme.Dim("◦")
 	}
 	switch row.Status {
 	case triage.StatusBlocked:
-		return red.Bold(true).Render("?")
+		return theme.Red.Bold(true).Render("?")
 	case triage.StatusError:
-		return red.Bold(true).Render("✗")
+		return theme.Red.Bold(true).Render("✗")
 	case triage.StatusWorking:
 		if row.WaitingOnWork {
-			return yellow.Render("◌")
+			return theme.Yellow.Render("◌")
 		}
 		return m.spinner.View()
 	case triage.StatusDone:
-		return green.Render("✓")
+		return theme.Green.Render("✓")
 	case triage.StatusIdle:
-		return dim("■")
+		return theme.Dim("■")
 	default:
-		return dim("·")
+		return theme.Dim("·")
 	}
 }
 
@@ -311,19 +313,19 @@ func (m Model) meta(row snapshot.Row, section triage.Section) string {
 		if !row.UntilWoken {
 			wake = "wakes in " + age(row.WakeAt.Sub(now))
 		}
-		base = purple.Render(wake)
+		base = theme.Purple.Render(wake)
 		if row.Pinned() {
-			base += cyan.Render(" ★")
+			base += theme.Cyan.Render(" ★")
 		}
 	case section == triage.SectionSettled:
-		base = dim(statusWord(row.Status) + harnessTag(row) + " · " + ago)
+		base = theme.Dim(statusWord(row.Status) + harnessTag(row) + " · " + ago)
 	case row.Closed:
-		base = dim("closed" + harnessTag(row) + " · " + ago)
+		base = theme.Dim("closed" + harnessTag(row) + " · " + ago)
 	default:
-		base = stateBadge(row) + dim(harnessTag(row)+" · "+ago)
+		base = stateBadge(row) + theme.Dim(harnessTag(row)+" · "+ago)
 	}
 	if pr := m.pullRequestBadge(row, section); pr != "" {
-		base += dim(" · ") + pr
+		base += theme.Dim(" · ") + pr
 	}
 	return base
 }
@@ -335,7 +337,7 @@ func (m Model) pullRequestBadge(row snapshot.Row, section triage.Section) string
 	}
 	badge := prBadge(pr, prName(pr), section == triage.SectionSettled || row.Closed)
 	if more := len(row.PullRequests) - 1; more > 0 {
-		badge += dim(" · +" + strconv.Itoa(more))
+		badge += theme.Dim(" · +" + strconv.Itoa(more))
 	}
 	return badge
 }
@@ -369,25 +371,25 @@ func stateBadge(row snapshot.Row) string {
 		if row.Kind != snapshot.KindNone {
 			badge += ": " + string(row.Kind)
 		}
-		return red.Bold(true).Render(badge)
+		return theme.Red.Bold(true).Render(badge)
 	case triage.StatusError:
-		return red.Bold(true).Render(statusWord(row.Status))
+		return theme.Red.Bold(true).Render(statusWord(row.Status))
 	case triage.StatusWorking:
 		if row.WaitingOnWork {
-			return yellow.Render("waiting")
+			return theme.Yellow.Render("waiting")
 		}
-		return yellow.Render("working")
+		return theme.Yellow.Render("working")
 	case triage.StatusDone:
-		return green.Render("done")
+		return theme.Green.Render("done")
 	default:
-		return dim(string(row.Status))
+		return theme.Dim(string(row.Status))
 	}
 }
 
 func overlay(lines, box []string, screenWidth int) []string {
 	boxWidth := 0
 	for _, line := range box {
-		boxWidth = max(boxWidth, width(line))
+		boxWidth = max(boxWidth, theme.Width(line))
 	}
 	left := max((screenWidth-boxWidth)/2, 0)
 	top := max((len(lines)-len(box))/2, 0)
@@ -398,9 +400,9 @@ func overlay(lines, box []string, screenWidth int) []string {
 			break
 		}
 		under := stripStyles(out[y])
-		before := pad(ansi.Truncate(under, left, ""), left)
+		before := theme.Pad(ansi.Truncate(under, left, ""), left)
 		after := ansi.TruncateLeft(under, left+boxWidth, "")
-		out[y] = pad(dim(before)+pad(line, boxWidth)+dim(after), screenWidth)
+		out[y] = theme.Pad(theme.Dim(before)+theme.Pad(line, boxWidth)+theme.Dim(after), screenWidth)
 	}
 	return out
 }

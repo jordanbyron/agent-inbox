@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jordanbyron/agent-inbox/internal/theme"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
@@ -25,16 +27,16 @@ func boxWidth(screenWidth, fit int) int {
 
 func box(title string, lines []string, outer int) []string {
 	inner := max(outer-2, 0)
-	top := truncate(title, inner)
-	out := []string{"┌" + top + strings.Repeat("─", max(inner-width(top), 0)) + "┐"}
+	top := theme.Truncate(title, inner)
+	out := []string{"┌" + top + strings.Repeat("─", max(inner-theme.Width(top), 0)) + "┐"}
 	for _, line := range lines {
-		out = append(out, "│ "+pad(line, max(inner-2, 0))+" │")
+		out = append(out, "│ "+theme.Pad(line, max(inner-2, 0))+" │")
 	}
 	return append(out, "└"+strings.Repeat("─", inner)+"┘")
 }
 
 func hint(key, what string) string {
-	return keyName(key) + "  " + dim(what)
+	return theme.KeyName(key) + "  " + theme.Dim(what)
 }
 
 func dismissed(msg tea.KeyPressMsg) bool {
@@ -62,7 +64,7 @@ type snoozeMenu struct {
 func (d snoozeMenu) view(screenWidth int) []string {
 	var lines []string
 	for _, c := range snoozeChoices {
-		lines = append(lines, "  "+keyName(c.key)+"  "+c.label)
+		lines = append(lines, "  "+theme.KeyName(c.key)+"  "+c.label)
 	}
 	lines = append(lines, "", "  "+hint("esc", "cancel"))
 	return box(" Snooze ", lines, boxWidth(screenWidth, dialogWidth))
@@ -113,7 +115,7 @@ type confirmDelete struct {
 
 func (d confirmDelete) view(screenWidth int) []string {
 	outer := boxWidth(screenWidth, dialogWidth)
-	lines := []string{"  Delete " + truncate(d.label, outer-4-width("  Delete ?")) + "?"}
+	lines := []string{"  Delete " + theme.Truncate(d.label, outer-4-theme.Width("  Delete ?")) + "?"}
 	if d.family {
 		lines = append(lines, "  The agents it started, their tabs,", "  worktrees and branches go with it.")
 	} else {
@@ -174,7 +176,7 @@ func (d *prompt) view(screenWidth int) []string {
 	lines := []string{
 		promptQuestions[d.kind], "",
 		"  " + d.input.View(), "",
-		"  " + keyName("⏎") + " " + dim("save") + " · " + keyName("esc") + " " + dim("cancel"),
+		"  " + theme.KeyName("⏎") + " " + theme.Dim("save") + " · " + theme.KeyName("esc") + " " + theme.Dim("cancel"),
 	}
 	return box(promptTitles[d.kind], lines, outer)
 }
@@ -236,7 +238,7 @@ func (d picker) view(screenWidth int) []string {
 	lines := d.lines()
 	fit := dialogWidth
 	for _, line := range lines {
-		fit = max(fit, width(line)+pickerMargin)
+		fit = max(fit, theme.Width(line)+pickerMargin)
 	}
 	title := " " + strings.ToUpper(string(d.verb[:1])) + string(d.verb[1:]) + " pull request "
 	return box(title, lines, boxWidth(screenWidth, fit))
@@ -256,12 +258,12 @@ func (d picker) lines() []string {
 		}
 		label := prBadge(pr, name, false)
 		if pr.Title != "" {
-			label += dim(" · ") + pr.Title
+			label += theme.Dim(" · ") + pr.Title
 		}
-		lines = append(lines, "  "+keyName(strconv.Itoa(i+1))+"  "+label)
+		lines = append(lines, "  "+theme.KeyName(strconv.Itoa(i+1))+"  "+label)
 	}
 	return append(lines, "",
-		"  "+hint(pickKeys[d.verb], string(d.verb)+" "+prName(d.prs[0]))+" · "+keyName("esc")+" "+dim("cancel"))
+		"  "+hint(pickKeys[d.verb], string(d.verb)+" "+prName(d.prs[0]))+" · "+theme.KeyName("esc")+" "+theme.Dim("cancel"))
 }
 
 func (d picker) press(m *Model, msg tea.KeyPressMsg) tea.Cmd {

@@ -69,23 +69,11 @@ func undoCreate(ctx context.Context, git Git, repo repository, wt Worktree) erro
 	return errors.Join(errs...)
 }
 
-// Remove removes the worktree at path and deletes branch. It refuses, naming
-// the worktree, while the worktree has uncommitted changes or commits that
-// no other branch, local or remote, holds.
+// Remove removes the worktree at path and deletes branch. It refuses as
+// Removable does.
 func Remove(ctx context.Context, git Git, path, branch string) error {
-	status, err := git.Run(ctx, path, "status", "--porcelain")
-	if err != nil {
-		return fmt.Errorf("removing worktree %s: %w", path, err)
-	}
-	if status != "" {
-		return fmt.Errorf("worktree %s has uncommitted changes", path)
-	}
-	unpushed, err := commitsOnlyHere(ctx, git, path, branch)
-	if err != nil {
-		return fmt.Errorf("removing worktree %s: %w", path, err)
-	}
-	if unpushed {
-		return fmt.Errorf("worktree %s has commits that are on no other branch", path)
+	if err := Removable(ctx, git, path, branch); err != nil {
+		return err
 	}
 	repo, err := findRepo(ctx, git, path)
 	if err != nil {
@@ -99,6 +87,27 @@ func Remove(ctx context.Context, git Git, path, branch string) error {
 	}
 	if _, err := git.Run(ctx, repo.root, "branch", "-D", branch); err != nil {
 		return fmt.Errorf("deleting branch %s: %w", branch, err)
+	}
+	return nil
+}
+
+// Removable reports, naming the worktree, why Remove would refuse it: it has
+// uncommitted changes or commits that no other branch, local or remote,
+// holds. It returns nil when Remove would go ahead.
+func Removable(ctx context.Context, git Git, path, branch string) error {
+	status, err := git.Run(ctx, path, "status", "--porcelain")
+	if err != nil {
+		return fmt.Errorf("checking worktree %s: %w", path, err)
+	}
+	if status != "" {
+		return fmt.Errorf("worktree %s has uncommitted changes", path)
+	}
+	unpushed, err := commitsOnlyHere(ctx, git, path, branch)
+	if err != nil {
+		return fmt.Errorf("checking worktree %s: %w", path, err)
+	}
+	if unpushed {
+		return fmt.Errorf("worktree %s has commits that are on no other branch", path)
 	}
 	return nil
 }

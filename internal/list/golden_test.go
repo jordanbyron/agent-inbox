@@ -1,9 +1,6 @@
 package list_test
 
 import (
-	"flag"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,12 +9,11 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 
+	"github.com/jordanbyron/agent-inbox/internal/golden"
 	"github.com/jordanbyron/agent-inbox/internal/list"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 )
-
-var update = flag.Bool("update", false, "rewrite the golden files in testdata")
 
 var now = time.Unix(1_789_600_000, 0)
 
@@ -110,18 +106,6 @@ func (s *screen) header() string {
 	return s.lines()[0]
 }
 
-func requireGolden(t *testing.T, name, got string) {
-	t.Helper()
-	path := filepath.Join("testdata", name+".golden")
-	if *update {
-		require.NoError(t, os.MkdirAll("testdata", 0o755))
-		require.NoError(t, os.WriteFile(path, []byte(got), 0o600))
-	}
-	want, err := os.ReadFile(path)
-	require.NoError(t, err)
-	require.Equal(t, string(want), got)
-}
-
 func TestGoldenFrames(t *testing.T) {
 	cases := []struct {
 		name          string
@@ -166,13 +150,13 @@ func TestGoldenFrames(t *testing.T) {
 			if tc.drive != nil {
 				tc.drive(s)
 			}
-			requireGolden(t, tc.name, s.frame())
+			golden.Require(t, tc.name, s.frame())
 		})
 	}
 }
 
 func TestGoldenEmptyInbox(t *testing.T) {
 	empty := snapshot.New("v1", nil, snapshot.SortDefault)
-	requireGolden(t, "empty_100x30", newScreen(t, empty, 100, 30).frame())
-	requireGolden(t, "empty_50x30", newScreen(t, empty, 50, 30).frame())
+	golden.Require(t, "empty_100x30", newScreen(t, empty, 100, 30).frame())
+	golden.Require(t, "empty_50x30", newScreen(t, empty, 50, 30).frame())
 }

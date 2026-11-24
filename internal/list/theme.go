@@ -5,33 +5,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jordanbyron/agent-inbox/internal/theme"
+
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/triage"
 )
 
-// The hues are claude-inbox's, tuned to Atom One Dark as 256-color indices.
-// Bubble Tea brings them down to whatever the terminal and NO_COLOR allow.
-var (
-	red    = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
-	green  = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
-	yellow = lipgloss.NewStyle().Foreground(lipgloss.Color("179"))
-	blue   = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
-	purple = lipgloss.NewStyle().Foreground(lipgloss.Color("176"))
-	cyan   = lipgloss.NewStyle().Foreground(lipgloss.Color("73"))
-	faint  = lipgloss.NewStyle().Faint(true)
-	plain  = lipgloss.NewStyle()
-)
-
 var sectionStyles = map[triage.Section]lipgloss.Style{
-	triage.SectionPinned:   cyan,
-	triage.SectionNeedsYou: red,
-	triage.SectionActive:   yellow,
-	triage.SectionWorking:  yellow,
-	triage.SectionSnoozed:  purple,
-	triage.SectionSettled:  faint,
+	triage.SectionPinned:   theme.Cyan,
+	triage.SectionNeedsYou: theme.Red,
+	triage.SectionActive:   theme.Yellow,
+	triage.SectionWorking:  theme.Yellow,
+	triage.SectionSnoozed:  theme.Purple,
+	triage.SectionSettled:  theme.Faint,
 }
 
 var sectionTitles = map[triage.Section]string{
@@ -44,24 +32,16 @@ var sectionTitles = map[triage.Section]string{
 }
 
 var prStateStyles = map[state.PRState]lipgloss.Style{
-	state.PRStateOpen:   green,
-	state.PRStateDraft:  faint,
-	state.PRStateMerged: purple,
-	state.PRStateClosed: red,
+	state.PRStateOpen:   theme.Green,
+	state.PRStateDraft:  theme.Faint,
+	state.PRStateMerged: theme.Purple,
+	state.PRStateClosed: theme.Red,
 }
 
 var prTrouble = map[triage.Health]string{
 	triage.HealthFailing:          "✗ checks",
 	triage.HealthChangesRequested: "changes requested",
 	triage.HealthConflicting:      "conflicts",
-}
-
-func dim(s string) string {
-	return faint.Render(s)
-}
-
-func keyName(s string) string {
-	return cyan.Bold(true).Render(s)
 }
 
 func prName(pr state.PullRequest) string {
@@ -84,7 +64,7 @@ func prRepo(pr state.PullRequest) string {
 func prBadge(pr state.PullRequest, name string, quiet bool) string {
 	hue, named := prStateStyles[pr.State]
 	if quiet || !named {
-		hue = faint
+		hue = theme.Faint
 	}
 	badge := hue.Underline(true).Hyperlink(pr.URL).Render(name)
 	if !named {
@@ -93,29 +73,13 @@ func prBadge(pr state.PullRequest, name string, quiet bool) string {
 	badge += hue.Render(" " + strings.ToLower(string(pr.State)))
 	if trouble, ok := prTrouble[pr.Health]; ok && !quiet {
 		// A conflict dims: it waits on a rebase, not on you.
-		troubleHue := faint
+		troubleHue := theme.Faint
 		if pr.Health != triage.HealthConflicting {
-			troubleHue = red
+			troubleHue = theme.Red
 		}
-		badge += dim(" · ") + troubleHue.Render(trouble)
+		badge += theme.Dim(" · ") + troubleHue.Render(trouble)
 	}
 	return badge
-}
-
-func width(s string) int {
-	return ansi.StringWidth(s)
-}
-
-func truncate(s string, w int) string {
-	if w <= 0 {
-		return ""
-	}
-	return ansi.Truncate(s, w, "…")
-}
-
-func pad(s string, w int) string {
-	s = truncate(s, w)
-	return s + strings.Repeat(" ", max(w-width(s), 0))
 }
 
 func age(d time.Duration) string {

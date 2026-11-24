@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jordanbyron/agent-inbox/internal/theme"
+
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -83,7 +85,7 @@ func New(c Config) Model {
 		home:     c.Home,
 		expanded: map[triage.Section]bool{},
 		filter:   newInput("", 0),
-		spinner:  spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(yellow)),
+		spinner:  spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(theme.Yellow)),
 	}
 	m.filter.Prompt = ""
 	m.reload()
@@ -461,9 +463,9 @@ func (m Model) render() string {
 			line = body[m.top+i].text
 		}
 		if m.stale() {
-			line = dim(stripStyles(line))
+			line = theme.Dim(stripStyles(line))
 		}
-		lines = append(lines, pad(line, m.width))
+		lines = append(lines, theme.Pad(line, m.width))
 	}
 	lines = append(lines, m.footer())
 	if m.dialog != nil {
