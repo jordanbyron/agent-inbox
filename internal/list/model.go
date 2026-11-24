@@ -73,6 +73,8 @@ type Model struct {
 	notice      string
 	noticeUntil time.Time
 	spinner     spinner.Model
+	// busy names the action running in the background, while one is.
+	busy string
 }
 
 // New returns the list, with the snapshot read once so the first frame has
@@ -127,6 +129,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 	case tea.KeyPressMsg:
 		cmd = m.press(msg)
+	case doneMsg:
+		m.finish(msg)
 	}
 	m.keepSelection()
 	m.scroll()
@@ -183,7 +187,7 @@ func (m *Model) perform(a action) tea.Cmd {
 	case actionPrevSection:
 		m.jumpSection(-1)
 	case actionActivate:
-		m.activate()
+		return m.activate()
 	case actionFoldOpen:
 		m.setExpanded(true)
 	case actionFoldClose:
@@ -193,32 +197,31 @@ func (m *Model) perform(a action) tea.Cmd {
 			m.setExpanded(!m.expanded[section])
 		}
 	case actionNew:
-		m.succeeded(m.actions.New())
+		return m.run("starting", Actions.New, afterAction{})
 	case actionFilter:
 		m.filtering = true
 	case actionEscape:
 		m.clearFilter()
 	default:
-		m.performOnRow(a)
+		return m.performOnRow(a)
 	}
 	return nil
 }
 
-func (m *Model) performOnRow(a action) {
+func (m *Model) performOnRow(a action) tea.Cmd {
 	row, ok := m.selectedRow()
 	if !ok {
-		return
+		return nil
 	}
+	key := row.Key
 	switch a {
 	case actionTogglePin:
-		m.succeeded(m.actions.TogglePin(row.Key))
+		return m.run("pinning", func(a Actions) error { return a.TogglePin(key) }, afterAction{})
 	case actionWake:
-		m.succeeded(m.actions.Wake(row.Key))
+		return m.run("waking", func(a Actions) error { return a.Wake(key) }, afterAction{})
 	case actionSettle:
-		if m.succeeded(m.actions.Settle(row.Key)) {
-			m.selectNeighbor()
-			m.say("settled — u brings it back")
-		}
+		return m.run("settling", func(a Actions) error { return a.Settle(key) },
+			afterAction{leaving: key, notice: "settled — u brings it back"})
 	case actionSnooze:
 		m.dialog = snoozeMenu{key: row.Key}
 	case actionAlias:
@@ -228,10 +231,11 @@ func (m *Model) performOnRow(a action) {
 	case actionDelete:
 		m.dialog = m.deleteConfirm(row)
 	case actionOpenPullRequest:
-		m.pickPullRequest(pickOpen, row)
+		return m.pickPullRequest(pickOpen, row)
 	case actionCopyPullRequest:
-		m.pickPullRequest(pickCopy, row)
+		return m.pickPullRequest(pickCopy, row)
 	}
+	return nil
 }
 
 func linkedURL(row snapshot.Row) string {
@@ -246,27 +250,25 @@ func linkedURL(row snapshot.Row) string {
 	return ""
 }
 
-func (m *Model) pickPullRequest(verb pickVerb, row snapshot.Row) {
+func (m *Model) pickPullRequest(verb pickVerb, row snapshot.Row) tea.Cmd {
 	switch len(row.PullRequests) {
 	case 0:
 		m.say("no pull request linked — P sets one")
 	case 1:
-		m.usePullRequest(verb, row.PullRequests[0])
+		return m.usePullRequest(verb, row.PullRequests[0])
 	default:
 		m.dialog = newPicker(verb, row.PullRequests)
 	}
+	return nil
 }
 
-func (m *Model) usePullRequest(verb pickVerb, pr state.PullRequest) {
+func (m *Model) usePullRequest(verb pickVerb, pr state.PullRequest) tea.Cmd {
 	if verb == pickOpen {
-		if m.succeeded(m.actions.OpenPullRequest(pr.URL)) {
-			m.say("opening " + prName(pr))
-		}
-		return
+		return m.run("opening", func(a Actions) error { return a.OpenPullRequest(pr.URL) },
+			afterAction{notice: "opening " + prName(pr)})
 	}
-	if m.succeeded(m.actions.CopyPullRequest(pr.URL)) {
-		m.say("copied " + prName(pr))
-	}
+	return m.run("copying", func(a Actions) error { return a.CopyPullRequest(pr.URL) },
+		afterAction{notice: "copied " + prName(pr)})
 }
 
 func (m *Model) deleteConfirm(row snapshot.Row) confirmDelete {
@@ -274,22 +276,62 @@ func (m *Model) deleteConfirm(row snapshot.Row) confirmDelete {
 	return confirmDelete{key: row.Key, label: family[0].Label, family: len(family) > 1}
 }
 
-func (m *Model) activate() {
+func (m *Model) activate() tea.Cmd {
 	if m.selected.isFold() {
 		m.setExpanded(true)
-		return
+		return nil
 	}
-	if row, ok := m.selectedRow(); ok {
-		m.succeeded(m.actions.Open(row.Key))
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
 	}
+	return m.run("showing", func(a Actions) error { return a.Open(row.Key) }, afterAction{})
 }
 
-func (m *Model) succeeded(err error) bool {
-	if err != nil {
-		m.say(err.Error())
-		return false
+// doneMsg says how an action run by run went.
+type doneMsg struct {
+	err  error
+	then afterAction
+}
+
+// afterAction is what the list does once an action succeeds.
+type afterAction struct {
+	notice string
+	// leaving is the row the action takes out of its section, so the
+	// cursor steps off it rather than follow it.
+	leaving string
+	// dialog closes when the action succeeds, and stays up to be fixed
+	// when it is refused.
+	dialog dialog
+}
+
+// run calls an action in a Cmd, since one that goes to Rex or git can take
+// a second, and says what it is doing meanwhile. One runs at a time.
+func (m *Model) run(doing string, call func(Actions) error, then afterAction) tea.Cmd {
+	if m.busy != "" {
+		return nil
 	}
-	return true
+	m.busy, m.notice = doing, ""
+	actions := m.actions
+	return func() tea.Msg { return doneMsg{err: call(actions), then: then} }
+}
+
+func (m *Model) finish(msg doneMsg) {
+	m.busy = ""
+	if msg.err != nil {
+		m.say(msg.err.Error())
+		return
+	}
+	if msg.then.leaving != "" && m.selected == rowStop(msg.then.leaving) {
+		m.selectNeighbor()
+	}
+	if msg.then.dialog != nil && m.dialog == msg.then.dialog {
+		m.dialog = nil
+	}
+	if msg.then.notice != "" {
+		m.say(msg.then.notice)
+	}
+	m.reload()
 }
 
 func (m *Model) say(notice string) {
@@ -299,6 +341,9 @@ func (m *Model) say(notice string) {
 func (m Model) status() string {
 	if m.notice != "" && m.now().Before(m.noticeUntil) {
 		return m.notice
+	}
+	if m.busy != "" {
+		return m.busy + "…"
 	}
 	if m.loadErr != nil {
 		return "⚠ " + m.loadErr.Error()

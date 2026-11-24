@@ -10,9 +10,14 @@ var errNotWired = errors.New("pin is not wired yet")
 type recorder struct {
 	calls []string
 	err   error
+	// gate, when set, holds every call until it is closed.
+	gate chan struct{}
 }
 
 func (r *recorder) record(call string) error {
+	if r.gate != nil {
+		<-r.gate
+	}
 	r.calls = append(r.calls, call)
 	return r.err
 }

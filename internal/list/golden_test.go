@@ -54,9 +54,23 @@ func (s *screen) send(msgs ...tea.Msg) *screen {
 	return s
 }
 
+// press sends each key and runs the command it returns, as the program
+// would, so an action a key starts has finished before the next key.
 func (s *screen) press(keys ...string) *screen {
 	for _, k := range keys {
-		s.send(keyPress(k))
+		s.send(keyPress(k)).finish()
+	}
+	return s
+}
+
+func (s *screen) finish() *screen {
+	if s.last == nil {
+		return s
+	}
+	switch msg := s.last().(type) {
+	case nil, tea.QuitMsg, tea.BatchMsg:
+	default:
+		s.send(msg)
 	}
 	return s
 }

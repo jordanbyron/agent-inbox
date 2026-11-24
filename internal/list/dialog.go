@@ -79,32 +79,26 @@ func (d snoozeMenu) press(m *Model, msg tea.KeyPressMsg) tea.Cmd {
 	case "1", "2", "3":
 		for _, c := range snoozeChoices {
 			if c.key == msg.String() {
-				m.snoozeUntil(d.key, c.typed)
+				return m.snoozeUntil(d.key, c.typed)
 			}
 		}
 	case "4":
 		m.dialog = nil
-		m.afterSnooze(d.key, m.actions.SnoozeUntilWoken(d.key))
+		return m.run("snoozing", func(a Actions) error { return a.SnoozeUntilWoken(d.key) }, afterAction{leaving: d.key})
 	case "5":
 		m.dialog = newPrompt(promptSnooze, d.key, "")
 	}
 	return nil
 }
 
-func (m *Model) snoozeUntil(key, typed string) {
+func (m *Model) snoozeUntil(key, typed string) tea.Cmd {
 	wake, ok := snoozetime.Parse(typed, m.now())
 	if !ok {
 		m.say("try 45m, 2h, 3d, 17:00, 5pm, fri, tomorrow or tonight")
-		return
+		return nil
 	}
 	m.dialog = nil
-	m.afterSnooze(key, m.actions.Snooze(key, wake))
-}
-
-func (m *Model) afterSnooze(key string, err error) {
-	if m.succeeded(err) && m.selected == rowStop(key) {
-		m.selectNeighbor()
-	}
+	return m.run("snoozing", func(a Actions) error { return a.Snooze(key, wake) }, afterAction{leaving: key})
 }
 
 type confirmDelete struct {
@@ -129,9 +123,7 @@ func (d confirmDelete) press(m *Model, msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case msg.String() == "y":
 		m.dialog = nil
-		if m.succeeded(m.actions.Delete(d.key)) && m.selected == rowStop(d.key) {
-			m.selectNeighbor()
-		}
+		return m.run("deleting", func(a Actions) error { return a.Delete(d.key) }, afterAction{leaving: d.key})
 	case dismissed(msg) || msg.String() == "n":
 		m.dialog = nil
 	}
@@ -188,8 +180,7 @@ func (d *prompt) press(m *Model, msg tea.KeyPressMsg) tea.Cmd {
 		m.dialog = nil
 		return nil
 	case "enter":
-		d.save(m)
-		return nil
+		return d.save(m)
 	}
 	var cmd tea.Cmd
 	d.input, cmd = d.input.Update(msg)
@@ -198,20 +189,18 @@ func (d *prompt) press(m *Model, msg tea.KeyPressMsg) tea.Cmd {
 
 // save leaves the prompt up when what was typed is refused, so it can be
 // fixed rather than typed again.
-func (d *prompt) save(m *Model) {
+func (d *prompt) save(m *Model) tea.Cmd {
 	value := strings.TrimSpace(d.input.Value())
+	key := d.key
 	switch d.kind {
 	case promptSnooze:
-		m.snoozeUntil(d.key, value)
+		return m.snoozeUntil(key, value)
 	case promptAlias:
-		if m.succeeded(m.actions.Alias(d.key, value)) {
-			m.dialog = nil
-		}
+		return m.run("saving", func(a Actions) error { return a.Alias(key, value) }, afterAction{dialog: d})
 	case promptLink:
-		if m.succeeded(m.actions.Link(d.key, value)) {
-			m.dialog = nil
-		}
+		return m.run("linking", func(a Actions) error { return a.Link(key, value) }, afterAction{dialog: d})
 	}
+	return nil
 }
 
 type pickVerb string
@@ -283,6 +272,5 @@ func (d picker) press(m *Model, msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	m.dialog = nil
-	m.usePullRequest(d.verb, d.prs[choice])
-	return nil
+	return m.usePullRequest(d.verb, d.prs[choice])
 }

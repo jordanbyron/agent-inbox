@@ -39,22 +39,16 @@ func verbCommands(open inboxOpener) []*cobra.Command {
 	}
 }
 
-// openInbox is where every verb gets its Inbox, so it is also where the
-// watcher will be started on demand.
+// openInbox is where every verb gets its Inbox.
 func openInbox(ctx context.Context) (*verbs.Inbox, error) {
-	bin, err := rex.FindBinary(os.Getenv)
+	srv, err := findServer(ctx)
 	if err != nil {
 		return nil, err
 	}
-	client := rex.New(bin)
-	server, err := client.Server(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("reaching the Rex server: %w", err)
-	}
-	dir, err := state.Dir(server.StateID())
-	if err != nil {
-		return nil, err
-	}
+	return newInbox(srv)
+}
+
+func newInbox(srv server) (*verbs.Inbox, error) {
 	path, err := config.Path()
 	if err != nil {
 		return nil, err
@@ -67,10 +61,10 @@ func openInbox(ctx context.Context) (*verbs.Inbox, error) {
 	if err != nil {
 		return nil, fmt.Errorf("finding the home directory: %w", err)
 	}
-	store := state.New(dir)
+	store := state.New(srv.dir)
 	return &verbs.Inbox{
 		Store:  store,
-		Rex:    client,
+		Rex:    srv.rex,
 		Config: cfg,
 		Git:    worktree.ExecGit{},
 		GH:     pulls.GH{},

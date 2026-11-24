@@ -245,6 +245,50 @@ func TestAnActionsErrorGoesToTheStatusLineForAWhile(t *testing.T) {
 	require.NotContains(t, s.header(), "not wired")
 }
 
+func TestASlowActionRunsBehindTheScreen(t *testing.T) {
+	s := tall(t)
+	s.actions.gate = make(chan struct{})
+
+	s.send(keyPress("x"))
+	require.Contains(t, s.header(), "settling…")
+	require.Empty(t, s.actions.calls, "the key returns before the action runs")
+
+	settle := s.last
+	result := make(chan tea.Msg)
+	go func() { result <- settle() }()
+	s.press("j")
+	require.Contains(t, s.selectedLine(), "fix the login redirect loop", "keys still move the cursor")
+	s.press("t")
+	require.Contains(t, s.header(), "settling…", "a second action waits for the first")
+
+	close(s.actions.gate)
+	s.send(<-result)
+	require.Equal(t, []string{"settle a7f3c2"}, s.actions.calls)
+	require.Contains(t, s.header(), "settled — u brings it back")
+}
+
+func TestAFinishedActionReadsTheSnapshotAgain(t *testing.T) {
+	loads := 0
+	s := &screen{t: t, actions: &recorder{}, clock: now}
+	s.model = list.New(list.Config{
+		Load: func() (snapshot.Snapshot, time.Time, error) {
+			loads++
+			return fixture(t), now, nil
+		},
+		Actions: s.actions,
+		Now:     func() time.Time { return s.clock },
+	})
+	s.send(tea.WindowSizeMsg{Width: 100, Height: 30})
+	before := loads
+
+	s.press("t")
+	require.Equal(t, before+1, loads)
+
+	s.actions.err = errNotWired
+	s.press("t")
+	require.Equal(t, before+1, loads, "a refused action changed nothing to read")
+}
+
 func TestTheCursorAfterARowLeaves(t *testing.T) {
 	cases := []struct {
 		name string
