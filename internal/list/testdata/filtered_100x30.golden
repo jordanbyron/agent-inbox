@@ -1,0 +1,30 @@
+ ▌ agent-inbox   ● 4 need you                                                                       
+                                                                                                    
+ ▎ NEEDS YOU ─────────────────────────────────────────────────────────────────────────────────── 4  
+ ▶ ✓ migrate billing to the new queue                               done · 50m · #77 draft  billing 
+       ↳ Split the work across three agents                                                         
+ ● ?   queue names                                    needs you: question · codex · 5m  queue-names 
+         ↳ Which queue should invoices use?                                                         
+   ◦   audit the old cron jobs                                              closed · 1h  cron-audit 
+   ⠋   port the retry worker                                             working · 1m  retry-worker 
+         ↳ Running go test ./worker/...                                                             
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ /billing                                                                                           

@@ -1,0 +1,30 @@
+ ▌ agent-inbox   ★ 1  ● 7  ✻ 2  ◌ 1  z 2  ◦ 3                                                       
+         ↳ Running go test ./worker/...                                                             
+ ● ✗ nightly import                                                          failed · agy · 1h  etl 
+       ↳ exit status 1: connection refused                                                          
+ ● ? sync the team calendar                                          needs you: auth · 2h  calendar 
+       ↳ Sign in to Google to continue                                                              
+                                                                                                    
+ ▎ ACTIVE ────────────────────────────────────────────────────────────────────────────────────── 6  
+   · claude                                                                  starting · 5s  scratch 
+       ↳ ~/scratch                                                                                  
+   ⠋ Explain why the flaky spec in spec/poller_spec.rb times out on C…  working · 50s  claude-inbox 
+       ↳ Reading spec/poller_spec.rb                                                                
+   ◌ deploy preview                                                     waiting · codex · 10m  site 
+       ↳ Waiting on 2 background shells                                                             
+ ● ✓ 🚀 launch checklist for the mobile beta              done · 2m · #230 open · conflicts  mobile 
+       ↳ Checklist written to docs/beta.md                                                          
+   ✓ bump dependencies                                            done · 3h · #940 merged · +1  app 
+       ↳ ~/code/app                                                                                 
+   ■ triage github issues                      idle · codex · 8h · github.com/acme/app/pull/77  app 
+       ↳ ~/code/app                                                                                 
+                                                                                                    
+ ▎ WORKING ───────────────────────────────────────────────────────────────────────────────────── 1  
+   … 1 working                                                                                      
+                                                                                                    
+ ▎ SNOOZED ───────────────────────────────────────────────────────────────────────────────────── 2  
+   … 2 snoozed                                                                                      
+                                                                                                    
+ ▎ SETTLED ───────────────────────────────────────────────────────────────────────────────────── 3  
+ ▶ … 3 settled   ⏎ or zo to expand                                                                  
+ j/k move  ⏎ show  n new  t pin  s snooze  u wake  a alias  o PR  x settle  ⇥ section  za fold  / f…

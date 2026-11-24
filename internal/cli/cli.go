@@ -14,7 +14,7 @@ func New() *cobra.Command {
 		Short:        "A triage inbox for coding agents running in Rex",
 		SilenceUsage: true,
 	}
-	root.AddCommand(newVersionCommand())
+	root.AddCommand(newVersionCommand(), newListCommand())
 	return root
 }
 

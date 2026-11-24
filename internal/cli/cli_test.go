@@ -28,3 +28,23 @@ func TestUnknownCommand(t *testing.T) {
 
 	require.ErrorContains(t, cmd.Execute(), `unknown command "nope"`)
 }
+
+func TestListNeedsAFixtureForNow(t *testing.T) {
+	var out bytes.Buffer
+	cmd := cli.New()
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"list"})
+
+	require.ErrorContains(t, cmd.Execute(), "list needs --fixture")
+}
+
+func TestListSaysWhichFixtureItCannotRead(t *testing.T) {
+	var out bytes.Buffer
+	cmd := cli.New()
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"list", "--fixture", "testdata/missing.json"})
+
+	require.ErrorContains(t, cmd.Execute(), "reading testdata/missing.json")
+}

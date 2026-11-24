@@ -29,7 +29,11 @@ func (s *Store) WriteSnapshot(body any, now time.Time) error {
 // ReadSnapshot decodes the last snapshot's body into v and returns when it
 // was written. With no snapshot yet, the error wraps fs.ErrNotExist.
 func (s *Store) ReadSnapshot(v any) (time.Time, error) {
-	path := s.path("snapshot.json")
+	return ReadSnapshotFile(s.path("snapshot.json"), v)
+}
+
+// ReadSnapshotFile is ReadSnapshot for a file at any path, such as a fixture.
+func ReadSnapshotFile(path string, v any) (time.Time, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("reading %s: %w", path, err)
