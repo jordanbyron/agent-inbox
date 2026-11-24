@@ -166,9 +166,9 @@ func TestNoNotificationForWhatHeldAtStartup(t *testing.T) {
 
 func TestNoNotificationWhileYouLook(t *testing.T) {
 	h, work, rootTab, rootBlock, _ := familyWithNotifyOn(t)
-	h.rex.AddApp("Rex", work)
-	require.NoError(t, h.rex.SetActiveWindow(work, rootTab))
+	app := h.rex.AddApp("Rex", work)
 	h.start()
+	require.NoError(t, h.rex.Display(app, work, rootTab))
 	h.status(work, rootBlock, working)
 	h.waitRow("a1", hasStatus(triage.StatusWorking))
 

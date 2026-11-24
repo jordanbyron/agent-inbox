@@ -393,8 +393,10 @@ leaves out, most of it with a live test. This spec leans on these:
 - The connection that creates a block owns it, and the app won't size the
   block until that connection disowns it or closes. `new` and `restore` are
   short-lived, so they're fine. The watcher never creates a block.
-- A focus change emits only `session_view_changed`. "Seen" is therefore read
-  per tab, from the session's `active_window_id`.
+- A focus change emits only `session_view_changed`. On Rex API revision 10
+  the session's `active_window_id` doesn't follow the app either, so "seen"
+  is read from the `size_changed` event an app sends for each block it
+  displays. [rex-client-notes.md](rex-client-notes.md) has the details.
 - Lua in `init.lua` runs with the Rex server's environment, whose `PATH`
   lacks most tools (inferred there, not tested). `agent-inbox lua` writes
   the binary's absolute path into the snippet.

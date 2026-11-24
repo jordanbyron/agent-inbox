@@ -17,8 +17,8 @@ go install ./cmd/agent-inbox
 
 ```
 agent-inbox                 the list
-agent-inbox new             start an agent
-agent-inbox snooze|wake|pin|settle|restore|alias|link|delete [AGENT]
+agent-inbox new             the new-agent form, or flags for scripts
+agent-inbox open|snooze|wake|pin|settle|restore|alias|link|delete [AGENT]
 agent-inbox ls --json       the rows, for other tools
 agent-inbox reap [--dry-run]
 agent-inbox lua             Rex actions to paste into init.lua
