@@ -39,10 +39,14 @@ func verbCommands(open inboxOpener) []*cobra.Command {
 	}
 }
 
-// openInbox is where every verb gets its Inbox.
+// openInbox is where every verb gets its Inbox, and makes sure the watcher
+// is running, since a verb's change reaches the list only through it.
 func openInbox(ctx context.Context) (*verbs.Inbox, error) {
 	srv, err := findServer(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := ensureWatcher(ctx, srv); err != nil {
 		return nil, err
 	}
 	return newInbox(srv)

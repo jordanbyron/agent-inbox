@@ -51,7 +51,8 @@ func showInbox(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return runList(cmd, liveList(cmd.Context(), inbox), srv.dir)
+	restart := func() error { return ensureWatcher(cmd.Context(), srv) }
+	return runList(cmd, liveList(cmd.Context(), inbox, restart), srv.dir)
 }
 
 // runList shows the list until it quits. With a state directory, a new
@@ -99,7 +100,7 @@ func reloadOnSnapshot(dir string, program *tea.Program) (stop func()) {
 }
 
 // liveList draws the watcher's snapshot, with each key running a verb.
-func liveList(ctx context.Context, inbox *verbs.Inbox) list.Model {
+func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error) list.Model {
 	return list.New(list.Config{
 		Load: func() (snapshot.Snapshot, time.Time, error) {
 			var snap snapshot.Snapshot
@@ -109,6 +110,7 @@ func liveList(ctx context.Context, inbox *verbs.Inbox) list.Model {
 		Actions: inbox.ListActions(ctx),
 		Now:     time.Now,
 		Home:    inbox.Home,
+		Restart: restart,
 	})
 }
 

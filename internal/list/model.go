@@ -40,6 +40,9 @@ type Config struct {
 	Now     func() time.Time
 	// Home is shortened to ~ in the directories the list shows.
 	Home string
+	// Restart starts the watcher again, for a snapshot gone stale while
+	// the list is on screen. Nil leaves the watcher alone.
+	Restart func() error
 }
 
 // ReloadMsg tells the model that the snapshot file changed.
@@ -53,6 +56,7 @@ type Model struct {
 	actions Actions
 	now     func() time.Time
 	home    string
+	restart func() error
 
 	snap      snapshot.Snapshot
 	loaded    bool
@@ -77,6 +81,10 @@ type Model struct {
 	spinner     spinner.Model
 	// busy names the action running in the background, while one is.
 	busy string
+
+	restarting  bool
+	restartedAt time.Time
+	restartErr  error
 }
 
 // New returns the list, with the snapshot read once so the first frame has
@@ -87,6 +95,7 @@ func New(c Config) Model {
 		actions:  c.Actions,
 		now:      c.Now,
 		home:     c.Home,
+		restart:  c.Restart,
 		expanded: map[triage.Section]bool{},
 		filter:   newInput("", 0),
 		spinner:  spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(theme.Yellow)),
@@ -126,7 +135,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reload()
 	case tickMsg:
 		m.reload()
-		cmd = tick()
+		cmd = tea.Batch(tick(), m.restartIfStale())
+	case restartMsg:
+		m.restarted(msg.err)
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 	case tea.KeyPressMsg:
@@ -154,6 +165,30 @@ func (m *Model) reload() {
 
 func (m Model) stale() bool {
 	return m.loaded && m.now().Sub(m.writtenAt) > StaleAfter
+}
+
+// restartMsg says how starting the watcher again went.
+type restartMsg struct{ err error }
+
+// restartIfStale starts the watcher again when its snapshot has gone stale,
+// at most once in StaleAfter, so one that won't start isn't hammered.
+func (m *Model) restartIfStale() tea.Cmd {
+	if m.restart == nil || m.restarting || !m.stale() || m.now().Sub(m.restartedAt) < StaleAfter {
+		return nil
+	}
+	m.restarting, m.restartedAt = true, m.now()
+	restart := m.restart
+	return func() tea.Msg { return restartMsg{err: restart()} }
+}
+
+func (m *Model) restarted(err error) {
+	m.restarting, m.restartErr = false, err
+	if err != nil {
+		m.say(err.Error())
+		return
+	}
+	m.say("started the watcher again")
+	m.reload()
 }
 
 func (m *Model) press(msg tea.KeyPressMsg) tea.Cmd {

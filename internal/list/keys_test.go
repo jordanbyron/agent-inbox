@@ -452,3 +452,52 @@ func TestStaleness(t *testing.T) {
 	require.Contains(t, s.header(), "⚠ snapshot 16s old — is the watcher running?")
 	require.NotContains(t, s.header(), "need you")
 }
+
+func TestAStaleSnapshotStartsTheWatcherAgain(t *testing.T) {
+	writtenAt := now
+	var restartErr error
+	s := &screen{t: t, actions: &recorder{}, clock: now}
+	s.model = list.New(list.Config{
+		Load:    func() (snapshot.Snapshot, time.Time, error) { return fixture(t), writtenAt, nil },
+		Actions: s.actions,
+		Now:     func() time.Time { return s.clock },
+		Restart: func() error {
+			if restartErr == nil {
+				writtenAt = s.clock
+			}
+			return restartErr
+		},
+	})
+	s.send(tea.WindowSizeMsg{Width: 100, Height: 30})
+	reloadTick := s.model.Init()().(tea.BatchMsg)[0]()
+
+	t.Run("a fresh snapshot leaves the watcher alone", func(t *testing.T) {
+		s.send(reloadTick)
+		require.NotNil(t, s.last)
+		require.NotContains(t, s.header(), "watcher")
+	})
+
+	t.Run("a stale one starts it, and the header says so", func(t *testing.T) {
+		s.clock = now.Add(list.StaleAfter + time.Second)
+		s.send(reloadTick)
+		require.Contains(t, s.header(), "⚠ snapshot 16s old — starting the watcher again")
+
+		restart := s.last().(tea.BatchMsg)[1]
+		s.send(restart())
+		require.NotContains(t, s.header(), "old")
+		require.Contains(t, s.header(), "started the watcher again")
+	})
+
+	t.Run("one that won't start says why", func(t *testing.T) {
+		restartErr = errors.New("the watcher did not start; see watcher.log")
+		s.clock = s.clock.Add(list.StaleAfter + time.Second)
+		s.send(reloadTick)
+		restart := s.last().(tea.BatchMsg)[1]
+		s.send(restart())
+		require.Contains(t, s.header(), "the watcher did not start; see watcher.log")
+
+		s.clock = s.clock.Add(5 * time.Second)
+		s.send(list.ReloadMsg{})
+		require.Contains(t, s.header(), "⚠ snapshot 21s old — the watcher did not start")
+	})
+}
