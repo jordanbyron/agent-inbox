@@ -72,3 +72,5 @@ func ShortenTimeouts(t *testing.T, d time.Duration) {
 	findTimeout, reapTimeout = d, d
 	t.Cleanup(func() { findTimeout, reapTimeout = find, reap })
 }
+
+const ServerProbes = serverProbes

@@ -33,6 +33,10 @@ const (
 	// for new branches between turns.
 	branchScanEvery = 2 * time.Minute
 	reapEvery       = 10 * time.Minute
+	// serverProbes is how many times running, a tick apart, the server
+	// must fail to answer before the watcher takes it as gone. A sleep and
+	// wake or a hiccup ends the event stream too.
+	serverProbes = 5
 )
 
 // The finder's gh and git calls and each reap sweep get a deadline, since

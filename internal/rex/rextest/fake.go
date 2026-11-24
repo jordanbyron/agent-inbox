@@ -36,6 +36,7 @@ type Fake struct {
 	closedWindows []string
 	shown         []string
 	layers        []rex.LayerOptions
+	noStatus      map[string]bool
 }
 
 type session struct {
@@ -61,7 +62,7 @@ type block struct {
 
 // New returns an empty Fake whose server has the given identity.
 func New(server rex.Server) *Fake {
-	return &Fake{server: server, captures: map[string]string{}}
+	return &Fake{server: server, captures: map[string]string{}, noStatus: map[string]bool{}}
 }
 
 // AddSession adds a session and returns its id.
@@ -247,6 +248,14 @@ func (f *Fake) Shutdown() {
 	f.streams = nil
 }
 
+// Recover undoes Shutdown: calls reach the server again, and a stream
+// Events returns from now on stays open.
+func (f *Fake) Recover() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.down = false
+}
+
 // Started returns the options of every Start call, in order.
 func (f *Fake) Started() []rex.StartOptions {
 	f.mu.Lock()
@@ -322,7 +331,8 @@ func (f *Fake) View(ctx context.Context, sessionID string) (rex.View, error) {
 	return view, nil
 }
 
-// Status returns a block's records in the order they were first set.
+// Status returns a block's records in the order they were first set, and
+// fails as Rex does for a block NoStatus made.
 func (f *Fake) Status(ctx context.Context, sessionID, blockID string) ([]rex.StatusRecord, error) {
 	if err := f.reachable(ctx); err != nil {
 		return nil, err
@@ -333,7 +343,18 @@ func (f *Fake) Status(ctx context.Context, sessionID, blockID string) ([]rex.Sta
 	if err != nil {
 		return nil, err
 	}
+	if f.noStatus[blockID] {
+		return nil, &rex.Error{Command: "block.method", Code: "method_not_found", Message: `method not found: "program_status"`}
+	}
 	return slices.Clone(b.records), nil
+}
+
+// NoStatus makes a block one that has no program status to ask for, as a
+// block that isn't a terminal is.
+func (f *Fake) NoStatus(blockID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.noStatus[blockID] = true
 }
 
 // Process reports every block as alive, since a block closes when its

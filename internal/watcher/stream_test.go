@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,6 +42,11 @@ func TestExitsWhenServerGoes(t *testing.T) {
 	h.start()
 
 	h.rex.Shutdown()
+	for failed := 1; failed < watcher.ServerProbes; failed++ {
+		require.Eventually(t, func() bool { return strings.Count(h.log.String(), "didn't answer") >= failed },
+			waitFor, time.Millisecond, "probe %d:\n%s", failed, h.log)
+		h.clock.Advance(time.Second)
+	}
 	select {
 	case err := <-h.done:
 		require.NoError(t, err)
@@ -77,4 +83,36 @@ func TestHeartbeatRewritesUnchangedSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, bytes.Equal(before, after))
 	require.Equal(t, written, fileInfo(t, statePath).ModTime(), "nothing changed, so state.json was not written")
+}
+
+// A block that isn't a terminal has no program status to give.
+func TestStartsBesideABlockWithNoStatus(t *testing.T) {
+	h := newHarness(t)
+	work := h.rex.AddSession("work")
+	_, other := h.tab(work, "")
+	h.rex.NoStatus(other)
+	_, block := h.tab(work, "agent-inbox:a1")
+	require.NoError(t, h.rex.SetStatus(work, block, idle))
+	h.edit(func(st *state.State) { st.Records["a1"] = launched(work, "/r/app") })
+
+	h.start()
+
+	h.waitRow("a1", hasStatus(triage.StatusIdle))
+}
+
+func TestOutlastsABriefOutage(t *testing.T) {
+	h := newHarness(t)
+	work := h.rex.AddSession("work")
+	_, block := h.tab(work, "agent-inbox:a1")
+	h.edit(func(st *state.State) { st.Records["a1"] = launched(work, "/r/app") })
+	h.start()
+
+	h.rex.Shutdown()
+	h.waitLog("the Rex server didn't answer")
+	h.rex.Recover()
+	h.clock.Advance(time.Second)
+	h.waitLog("reconnected")
+
+	h.status(work, block, idle)
+	h.waitRow("a1", hasStatus(triage.StatusIdle))
 }

@@ -50,8 +50,11 @@ func (w *watcher) scanSession(ctx context.Context, wd *world, sessionID string) 
 		if errors.Is(err, rex.ErrNotFound) {
 			continue
 		}
+		// A block that isn't a terminal has no program status to give, and
+		// it mustn't keep the watcher from every other block.
 		if err != nil {
-			return fmt.Errorf("reading the status of block %s: %w", b.id, err)
+			w.log.Warn("reading the status of a block; taking it as reporting none", "block", b.id, "err", err)
+			continue
 		}
 		b.records = records
 	}

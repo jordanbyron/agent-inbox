@@ -61,6 +61,8 @@ type watcher struct {
 
 	reaper   *reap.Reaper
 	lastReap time.Time
+
+	failedProbes int
 }
 
 func newWatcher(opts Options, store *state.Store) (*watcher, error) {
@@ -195,15 +197,20 @@ func drain(events <-chan rex.Event) {
 	}
 }
 
-// serverUp reports whether the server is still there after its event
-// stream ended. If it is, the next tick reconnects.
+// serverUp reports whether the server may still be there after its event
+// stream ended. If it may, the next tick reconnects.
 func (w *watcher) serverUp(ctx context.Context, reason error) bool {
 	if ctx.Err() != nil {
 		return false
 	}
 	if _, err := w.rex.Server(ctx); err != nil {
-		w.log.Info("the Rex server is gone", "reason", reason, "err", err)
-		return false
+		w.failedProbes++
+		if w.failedProbes >= serverProbes {
+			w.log.Info("the Rex server is gone", "reason", reason, "err", err)
+			return false
+		}
+		w.log.Warn("the Rex server didn't answer; trying again", "err", err)
+		return true
 	}
 	w.log.Warn("the Rex event stream ended; reconnecting", "reason", reason)
 	return true
@@ -217,6 +224,7 @@ func (w *watcher) reconnect(ctx context.Context) (<-chan rex.Event, <-chan error
 		w.log.Warn("scanning Rex after reconnecting", "err", err)
 		return events, ended
 	}
+	w.failedProbes = 0
 	w.log.Info("reconnected to the Rex event stream")
 	return events, ended
 }
