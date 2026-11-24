@@ -36,6 +36,7 @@ type Rex interface {
 	CloseBlock(ctx context.Context, sessionID, blockID string) error
 	CloseWindow(ctx context.Context, sessionID, windowID string) error
 	Show(ctx context.Context, sessionID, blockID string) error
+	OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error)
 }
 
 // Inbox is everything the verbs need. Every field is required except
@@ -55,6 +56,9 @@ type Inbox struct {
 	Getenv func(string) string
 	// Home holds the harnesses' own files, where a session id is looked up.
 	Home string
+	// Form is the command that shows the new-agent form: this binary's own
+	// absolute path and "new".
+	Form []string
 }
 
 // Target says which agent a verb is aimed at: an agent key, or a block id.

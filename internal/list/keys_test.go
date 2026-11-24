@@ -2,6 +2,7 @@ package list_test
 
 import (
 	"errors"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -245,6 +246,68 @@ func TestAnActionsErrorGoesToTheStatusLineForAWhile(t *testing.T) {
 	require.NotContains(t, s.header(), "not wired")
 }
 
+func TestASlowActionRunsBehindTheScreen(t *testing.T) {
+	s := tall(t)
+	s.actions.gate = make(chan struct{})
+
+	s.send(keyPress("x"))
+	require.Contains(t, s.header(), "settling…")
+	require.Empty(t, s.actions.calls, "the key returns before the action runs")
+
+	settle := s.last
+	result := make(chan tea.Msg)
+	go func() { result <- settle() }()
+	s.press("j")
+	require.Contains(t, s.selectedLine(), "fix the login redirect loop", "keys still move the cursor")
+	s.press("t")
+	require.Contains(t, s.header(), "settling…", "a second action waits for the first")
+
+	close(s.actions.gate)
+	s.send(<-result)
+	require.Equal(t, []string{"settle a7f3c2"}, s.actions.calls)
+	require.Contains(t, s.header(), "settled — u brings it back")
+}
+
+func TestNewRunsTheFormHereOnlyWhenItHasTo(t *testing.T) {
+	t.Run("a form opened elsewhere leaves the list as it was", func(t *testing.T) {
+		s := tall(t).press("n")
+		require.Equal(t, []string{"new"}, s.actions.calls)
+		require.Nil(t, s.last)
+		require.NotContains(t, s.header(), "opening the form")
+	})
+
+	t.Run("a form to run here takes the terminal until it exits", func(t *testing.T) {
+		s := tall(t)
+		s.actions.form = exec.Command("true")
+		s.send(keyPress("n"))
+		s.send(s.last())
+		require.NotNil(t, s.last, "the list hands the form a command to run")
+		require.Contains(t, s.header(), "opening the form…")
+	})
+}
+
+func TestAFinishedActionReadsTheSnapshotAgain(t *testing.T) {
+	loads := 0
+	s := &screen{t: t, actions: &recorder{}, clock: now}
+	s.model = list.New(list.Config{
+		Load: func() (snapshot.Snapshot, time.Time, error) {
+			loads++
+			return fixture(t), now, nil
+		},
+		Actions: s.actions,
+		Now:     func() time.Time { return s.clock },
+	})
+	s.send(tea.WindowSizeMsg{Width: 100, Height: 30})
+	before := loads
+
+	s.press("t")
+	require.Equal(t, before+1, loads)
+
+	s.actions.err = errNotWired
+	s.press("t")
+	require.Equal(t, before+1, loads, "a refused action changed nothing to read")
+}
+
 func TestTheCursorAfterARowLeaves(t *testing.T) {
 	cases := []struct {
 		name string
@@ -388,4 +451,55 @@ func TestStaleness(t *testing.T) {
 	s.send(list.ReloadMsg{})
 	require.Contains(t, s.header(), "⚠ snapshot 16s old — is the watcher running?")
 	require.NotContains(t, s.header(), "need you")
+}
+
+func TestAStaleSnapshotStartsTheWatcherAgain(t *testing.T) {
+	writtenAt := now
+	var restartErr error
+	s := &screen{t: t, actions: &recorder{}, clock: now}
+	s.model = list.New(list.Config{
+		Load:    func() (snapshot.Snapshot, time.Time, error) { return fixture(t), writtenAt, nil },
+		Actions: s.actions,
+		Now:     func() time.Time { return s.clock },
+		Restart: func() error {
+			if restartErr == nil {
+				writtenAt = s.clock
+			}
+			return restartErr
+		},
+	})
+	s.send(tea.WindowSizeMsg{Width: 100, Height: 30})
+	reloadTick := s.model.Init()().(tea.BatchMsg)[0]()
+
+	t.Run("a fresh snapshot leaves the watcher alone", func(t *testing.T) {
+		s.send(reloadTick)
+		require.NotNil(t, s.last)
+		require.NotContains(t, s.header(), "watcher")
+	})
+
+	t.Run("a stale one starts it, and the header says so", func(t *testing.T) {
+		s.clock = now.Add(list.StaleAfter + time.Second)
+		s.send(list.ReloadMsg{})
+		require.Contains(t, s.header(), "⚠ snapshot 16s old — starting the watcher again", "from the first frame it is stale")
+		s.send(reloadTick)
+		require.Contains(t, s.header(), "⚠ snapshot 16s old — starting the watcher again")
+
+		restart := s.last().(tea.BatchMsg)[1]
+		s.send(restart())
+		require.NotContains(t, s.header(), "old")
+		require.Contains(t, s.header(), "started the watcher again")
+	})
+
+	t.Run("one that won't start says why", func(t *testing.T) {
+		restartErr = errors.New("the watcher did not start; see watcher.log")
+		s.clock = s.clock.Add(list.StaleAfter + time.Second)
+		s.send(reloadTick)
+		restart := s.last().(tea.BatchMsg)[1]
+		s.send(restart())
+		require.Contains(t, s.header(), "the watcher did not start; see watcher.log")
+
+		s.clock = s.clock.Add(5 * time.Second)
+		s.send(list.ReloadMsg{})
+		require.Contains(t, s.header(), "⚠ snapshot 21s old — the watcher did not start")
+	})
 }

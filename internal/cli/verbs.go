@@ -8,13 +8,14 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
+	"github.com/jordanbyron/agent-inbox/internal/form"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
@@ -28,6 +29,7 @@ type inboxOpener func(ctx context.Context) (*verbs.Inbox, error)
 func verbCommands(open inboxOpener) []*cobra.Command {
 	return []*cobra.Command{
 		newNewCommand(open),
+		newOpenCommand(open),
 		newSnoozeCommand(open),
 		newWakeCommand(open),
 		newPinCommand(open),
@@ -39,22 +41,20 @@ func verbCommands(open inboxOpener) []*cobra.Command {
 	}
 }
 
-// openInbox is where every verb gets its Inbox, so it is also where the
-// watcher will be started on demand.
+// openInbox is where every verb gets its Inbox, and makes sure the watcher
+// is running, since a verb's change reaches the list only through it.
 func openInbox(ctx context.Context) (*verbs.Inbox, error) {
-	bin, err := rex.FindBinary(os.Getenv)
+	srv, err := findServer(ctx)
 	if err != nil {
 		return nil, err
 	}
-	client := rex.New(bin)
-	server, err := client.Server(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("reaching the Rex server: %w", err)
-	}
-	dir, err := state.Dir(server.StateID())
-	if err != nil {
+	if err := ensureWatcher(ctx, srv); err != nil {
 		return nil, err
 	}
+	return newInbox(srv)
+}
+
+func newInbox(srv server) (*verbs.Inbox, error) {
 	path, err := config.Path()
 	if err != nil {
 		return nil, err
@@ -67,10 +67,14 @@ func openInbox(ctx context.Context) (*verbs.Inbox, error) {
 	if err != nil {
 		return nil, fmt.Errorf("finding the home directory: %w", err)
 	}
-	store := state.New(dir)
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("finding this binary: %w", err)
+	}
+	store := state.New(srv.dir)
 	return &verbs.Inbox{
 		Store:  store,
-		Rex:    client,
+		Rex:    srv.rex,
 		Config: cfg,
 		Git:    worktree.ExecGit{},
 		GH:     pulls.GH{},
@@ -85,18 +89,35 @@ func openInbox(ctx context.Context) (*verbs.Inbox, error) {
 		},
 		Getenv: os.Getenv,
 		Home:   home,
+		Form:   formCommand(exe),
 	}, nil
+}
+
+// formCommand runs this binary's new. A Rex layer starts it in Rex's own
+// environment, so the variables that choose its config and state go along.
+func formCommand(exe string) []string {
+	var env []string
+	for _, name := range []string{"XDG_CONFIG_HOME", "XDG_STATE_HOME"} {
+		if value, ok := os.LookupEnv(name); ok {
+			env = append(env, name+"="+value)
+		}
+	}
+	if env == nil {
+		return []string{exe, "new"}
+	}
+	return slices.Concat([]string{"env"}, env, []string{exe, "new"})
 }
 
 func newNewCommand(open inboxOpener) *cobra.Command {
 	var req verbs.StartRequest
 	cmd := &cobra.Command{
 		Use:   "new",
-		Short: "Start an agent in a new Rex tab",
+		Short: "Start an agent in a new Rex tab; without --prompt, choose in the form",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if req.Prompt == "" {
-				return errors.New("new needs --prompt until the form is built")
+			in, onTerminal := terminalIn(cmd)
+			if req.Prompt == "" && !onTerminal {
+				return errors.New("new needs --prompt when it is not on a terminal")
 			}
 			inbox, err := open(cmd.Context())
 			if err != nil {
@@ -110,11 +131,22 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 					req.Session = pane.SessionID
 				}
 			}
-			a, err := inbox.Start(cmd.Context(), req)
-			if a.Key != "" {
-				say(cmd, "started %s (%s)", a.Name, a.Key)
+			if req.Prompt != "" {
+				return start(cmd, inbox, req)
 			}
-			return err
+			opts, err := formOptions(cmd.Context(), inbox, req, cmd.OutOrStdout())
+			if err != nil {
+				return err
+			}
+			result, ok, err := form.Run(cmd.Context(), opts)
+			if err != nil || !ok {
+				return err
+			}
+			if err := start(cmd, inbox, fromForm(result, req)); err != nil {
+				holdOnError(cmd, in, err)
+				return err
+			}
+			return nil
 		},
 	}
 	flags := cmd.Flags()
@@ -129,6 +161,25 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 	flags.BoolVar(&req.Worktree, "worktree", true, "make a worktree when the directory is in a git repository (default from the config)")
 	flags.BoolVar(&req.Show, "show", false, "show the new tab")
 	return cmd
+}
+
+func start(cmd *cobra.Command, inbox *verbs.Inbox, req verbs.StartRequest) error {
+	a, err := inbox.Start(cmd.Context(), req)
+	if a.Key != "" {
+		say(cmd, "started %s (%s)", a.Name, a.Key)
+	}
+	return err
+}
+
+func newOpenCommand(open inboxOpener) *cobra.Command {
+	return verbCommand(open, verbSpec{
+		use:   "open [AGENT]",
+		short: "Show an agent's tab, restoring it first if it is settled",
+		run: func(ctx context.Context, inbox *verbs.Inbox, t verbs.Target, _ string) (string, error) {
+			a, err := inbox.Open(ctx, t)
+			return "showing " + a.Name, err
+		},
+	})
 }
 
 func newSnoozeCommand(open inboxOpener) *cobra.Command {
@@ -259,8 +310,8 @@ func newDeleteCommand(open inboxOpener) *cobra.Command {
 // confirm asks on a terminal. Anywhere else there is no one to answer, so
 // it refuses rather than guess.
 func confirm(cmd *cobra.Command, question string) error {
-	in, ok := cmd.InOrStdin().(*os.File)
-	if !ok || !term.IsTerminal(in.Fd()) {
+	in, ok := terminalIn(cmd)
+	if !ok {
 		return errors.New("not on a terminal: pass --yes to delete without asking")
 	}
 	_, _ = fmt.Fprint(cmd.ErrOrStderr(), question)

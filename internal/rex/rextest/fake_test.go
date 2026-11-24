@@ -20,8 +20,8 @@ type rexAPI interface {
 	Status(ctx context.Context, sessionID, blockID string) ([]rex.StatusRecord, error)
 	Process(ctx context.Context, sessionID, blockID string) (rex.Process, error)
 	Apps(ctx context.Context) ([]rex.App, error)
-	ShownWindows(ctx context.Context) ([]rex.ShownWindow, error)
 	Start(ctx context.Context, opts rex.StartOptions) (rex.Started, error)
+	OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error)
 	CloseBlock(ctx context.Context, sessionID, blockID string) error
 	CloseWindow(ctx context.Context, sessionID, windowID string) error
 	Show(ctx context.Context, sessionID, blockID string) error
@@ -146,10 +146,10 @@ func TestFakeRecordsRequests(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://github.com/example/repo/pull/12\n", text)
 
+	events, _ := fake.Events(t.Context())
 	require.NoError(t, fake.Show(t.Context(), work, started.BlockID))
-	shown, err := fake.ShownWindows(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, []rex.ShownWindow{{ClientID: app, SessionID: work, WindowID: started.WindowID}}, shown)
+	require.Equal(t, rex.Event{Type: rex.EventBlockSized, SessionID: work, BlockID: started.BlockID, ClientID: app}, next(t, events),
+		"the app displays the tab it was asked to select")
 
 	fake.SetRemoteControl(false)
 	err = fake.Show(t.Context(), work, started.BlockID)
@@ -166,6 +166,43 @@ func TestFakeRecordsRequests(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, view.Windows)
 	require.Empty(t, view.ActiveWindowID)
+}
+
+func TestFakeDisplay(t *testing.T) {
+	fake := rextest.New(rex.Server{})
+	work := fake.AddSession("work")
+	window, err := fake.AddWindow(work, "split")
+	require.NoError(t, err)
+	left, err := fake.AddBlock(work, window, "")
+	require.NoError(t, err)
+	right, err := fake.AddBlock(work, window, "")
+	require.NoError(t, err)
+	app := fake.AddApp("studio", work)
+	events, _ := fake.Events(t.Context())
+
+	require.NoError(t, fake.Display(app, work, window))
+
+	require.Equal(t, rex.Event{Type: rex.EventBlockSized, SessionID: work, BlockID: left, ClientID: app}, next(t, events))
+	require.Equal(t, rex.Event{Type: rex.EventBlockSized, SessionID: work, BlockID: right, ClientID: app}, next(t, events))
+	require.ErrorIs(t, fake.Display(app, work, "window:gone"), rex.ErrNotFound)
+}
+
+func TestFakeOpenLayer(t *testing.T) {
+	fake := rextest.New(rex.Server{})
+	work := fake.AddSession("work")
+	window, err := fake.AddWindow(work, "inbox")
+	require.NoError(t, err)
+	opts := rex.LayerOptions{SessionID: work, WindowID: window, Command: []string{"agent-inbox", "new"}, Dir: "/tmp"}
+
+	layer, err := fake.OpenLayer(t.Context(), opts)
+
+	require.NoError(t, err)
+	require.Equal(t, []rex.LayerOptions{opts}, fake.Layers())
+	view, err := fake.View(t.Context(), work)
+	require.NoError(t, err)
+	require.Equal(t, layer.BlockID, view.Windows[0].Blocks[0].ID)
+	_, err = fake.OpenLayer(t.Context(), rex.LayerOptions{SessionID: work, WindowID: "window:gone"})
+	require.ErrorIs(t, err, rex.ErrNotFound)
 }
 
 func TestFakeRemoveSession(t *testing.T) {

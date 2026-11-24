@@ -102,6 +102,7 @@ func newWorld(t *testing.T) *world {
 		Snapshot: func() (snapshot.Snapshot, error) { return w.snap, nil },
 		Getenv:   func(key string) string { return w.env[key] },
 		Home:     "/home/test",
+		Form:     []string{"/opt/agent-inbox", "new"},
 	}
 	return w
 }

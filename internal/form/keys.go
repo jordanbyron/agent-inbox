@@ -69,9 +69,9 @@ func (m *Model) press(msg tea.KeyPressMsg) tea.Cmd {
 	if m.confirmDiscard {
 		return m.pressConfirm(key)
 	}
-	m.problem, m.candidates = "", nil
+	m.problem = ""
 	before, hadQuery := m.menuQuery()
-	if m.pressMenu(key) {
+	if m.pressMenu(key) || (m.focus == fieldDir && m.dir.Press(key, msg.Text)) {
 		return nil
 	}
 	cmd := m.perform(lookup(key), msg)
@@ -101,9 +101,7 @@ func (m *Model) perform(a action, msg tea.KeyPressMsg) tea.Cmd {
 	case actionPaste:
 		m.pasteClipboard()
 	case actionNext:
-		if !m.completeDir() {
-			m.move(1)
-		}
+		m.move(1)
 	case actionPrev:
 		m.move(-1)
 	case actionDown:
@@ -131,7 +129,7 @@ func (m *Model) edit(msg tea.KeyPressMsg) {
 		buffer.Press(msg.String(), msg.Text)
 		return
 	}
-	if step, ok := cycle[msg.String()]; ok {
+	if step, ok := cycle[msg.String()]; ok && m.choices[m.focus] != nil {
 		m.choices[m.focus].step(step)
 		if m.focus == fieldHarness {
 			m.chooseHarness()
@@ -145,8 +143,6 @@ func (m *Model) buffer() *editor.Buffer {
 		return &m.prompt
 	case fieldName:
 		return &m.name
-	case fieldDir:
-		return &m.dir
 	default:
 		return nil
 	}
@@ -259,6 +255,8 @@ func (m *Model) pasteClipboard() {
 
 func (m *Model) insert(text string) {
 	switch buffer := m.buffer(); {
+	case m.focus == fieldDir:
+		m.dir.Paste(text)
 	case buffer == nil:
 	case m.focus == fieldPrompt:
 		buffer.Paste(text)

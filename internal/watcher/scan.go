@@ -28,6 +28,7 @@ func (w *watcher) scan(ctx context.Context) error {
 			return err
 		}
 	}
+	fresh.keepShowing(w.world)
 	w.world = fresh
 	return nil
 }
@@ -38,7 +39,7 @@ func (w *watcher) scan(ctx context.Context) error {
 func (w *watcher) scanSession(ctx context.Context, wd *world, sessionID string) error {
 	view, err := w.rex.View(ctx, sessionID)
 	if errors.Is(err, rex.ErrNotFound) {
-		delete(wd.sessions, sessionID)
+		wd.removeSession(sessionID)
 		return nil
 	}
 	if err != nil {
@@ -94,10 +95,16 @@ func (w *watcher) handle(ctx context.Context, event rex.Event) bool {
 		w.world.removeBlock(event.SessionID, event.BlockID)
 	case rex.EventWindowClosed:
 		w.world.removeWindow(event.SessionID, event.WindowID)
-	case rex.EventActiveWindowChanged:
-		w.world.setActiveWindow(event.SessionID, event.WindowID)
+	case rex.EventBlockSized:
+		if !w.world.isApp(event.ClientID) {
+			return false
+		}
+		if w.world.block(event.SessionID, event.BlockID) == nil {
+			w.rescan(ctx, event.SessionID)
+		}
+		return w.world.sized(event.SessionID, event.BlockID, event.ClientID)
 	case rex.EventSessionDestroyed:
-		delete(w.world.sessions, event.SessionID)
+		w.world.removeSession(event.SessionID)
 	case rex.EventSessionCreated, rex.EventBlockCreated, rex.EventWindowCreated, rex.EventWindowLabelChanged:
 		w.rescan(ctx, event.SessionID)
 	case rex.EventViewChanged:

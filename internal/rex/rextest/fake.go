@@ -35,6 +35,7 @@ type Fake struct {
 	closedBlocks  []string
 	closedWindows []string
 	shown         []string
+	layers        []rex.LayerOptions
 }
 
 type session struct {
@@ -360,26 +361,6 @@ func (f *Fake) Apps(ctx context.Context) ([]rex.App, error) {
 	return slices.Clone(f.apps), nil
 }
 
-// ShownWindows returns each app's session's active window.
-func (f *Fake) ShownWindows(ctx context.Context) ([]rex.ShownWindow, error) {
-	if err := f.reachable(ctx); err != nil {
-		return nil, err
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var shown []rex.ShownWindow
-	for _, app := range f.apps {
-		for _, sessionID := range app.SessionIDs {
-			s, err := f.session(sessionID)
-			if err != nil || s.active == "" {
-				continue
-			}
-			shown = append(shown, rex.ShownWindow{ClientID: app.ClientID, SessionID: sessionID, WindowID: s.active})
-		}
-	}
-	return shown, nil
-}
-
 // Start records opts and adds the window and block they describe.
 func (f *Fake) Start(ctx context.Context, opts rex.StartOptions) (rex.Started, error) {
 	if err := f.reachable(ctx); err != nil {
@@ -403,6 +384,33 @@ func (f *Fake) Start(ctx context.Context, opts rex.StartOptions) (rex.Started, e
 		f.activate(s, w.id)
 	}
 	return rex.Started{SessionID: s.id, WindowID: w.id, BlockID: b.id}, nil
+}
+
+// OpenLayer records opts and adds a block for the layer to the window.
+func (f *Fake) OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error) {
+	if err := f.reachable(ctx); err != nil {
+		return rex.Layer{}, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, err := f.session(opts.SessionID)
+	if err != nil {
+		return rex.Layer{}, err
+	}
+	w, err := s.window(opts.WindowID)
+	if err != nil {
+		return rex.Layer{}, err
+	}
+	f.layers = append(f.layers, opts)
+	b := f.addBlock(s, w, "", opts.Dir)
+	return rex.Layer{ID: f.newID("layer"), BlockID: b.id}, nil
+}
+
+// Layers returns the options of every OpenLayer call, in order.
+func (f *Fake) Layers() []rex.LayerOptions {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.layers)
 }
 
 // CloseBlock records the request and closes the block.
@@ -441,8 +449,9 @@ func (f *Fake) CloseWindow(ctx context.Context, sessionID, windowID string) erro
 	return nil
 }
 
-// Show records the request and makes the block's window active. With Remote
-// Control off and an app attached to the session, it then fails as Rex does.
+// Show records the request and makes the block's window active, and each
+// app attached to the session displays it. With Remote Control off and an
+// app attached, it fails as Rex does instead.
 func (f *Fake) Show(ctx context.Context, sessionID, blockID string) error {
 	if err := f.reachable(ctx); err != nil {
 		return err
@@ -456,11 +465,39 @@ func (f *Fake) Show(ctx context.Context, sessionID, blockID string) error {
 	f.shown = append(f.shown, blockID)
 	f.activate(s, w.id)
 	for _, app := range f.apps {
-		if f.remoteOff && slices.Contains(app.SessionIDs, sessionID) {
+		if !slices.Contains(app.SessionIDs, sessionID) {
+			continue
+		}
+		if f.remoteOff {
 			return &rex.Error{Command: "client.perform", Code: "refused", Message: RemoteControlRefusal}
 		}
+		f.display(app.ClientID, s, w)
 	}
 	return nil
+}
+
+// Display has an app display a tab, as clicking it there would: the app
+// sizes each of the tab's blocks, and the session's active window, which is
+// the server's own, stays as it was.
+func (f *Fake) Display(clientID, sessionID, windowID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, err := f.session(sessionID)
+	if err != nil {
+		return err
+	}
+	w, err := s.window(windowID)
+	if err != nil {
+		return err
+	}
+	f.display(clientID, s, w)
+	return nil
+}
+
+func (f *Fake) display(clientID string, s *session, w *window) {
+	for _, b := range w.blocks {
+		f.emit(rex.Event{Type: rex.EventBlockSized, SessionID: s.id, BlockID: b.id, ClientID: clientID})
+	}
 }
 
 // Capture returns what SetCapture set for the block.

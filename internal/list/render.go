@@ -50,13 +50,24 @@ func (m Model) headerRight(room int) string {
 	}
 }
 
+func (m Model) watcherNote() string {
+	switch {
+	case m.restart == nil:
+		return "is the watcher running?"
+	case m.restartErr != nil && !m.restarting:
+		return "the watcher did not start"
+	default:
+		return "starting the watcher again"
+	}
+}
+
 func (m Model) chips(snap snapshot.Snapshot, compact bool) string {
 	if m.stale() {
 		old := age(m.now().Sub(m.writtenAt))
 		if compact {
 			return theme.Red.Bold(true).Render("⚠ " + old + " old")
 		}
-		return theme.Red.Bold(true).Render("⚠ snapshot " + old + " old — is the watcher running?")
+		return theme.Red.Bold(true).Render("⚠ snapshot " + old + " old — " + m.watcherNote())
 	}
 	if !m.loaded {
 		return ""

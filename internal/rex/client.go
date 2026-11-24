@@ -170,35 +170,6 @@ func (c *Client) Apps(ctx context.Context) ([]App, error) {
 	return apps, nil
 }
 
-// ShownWindows returns the window each app shows in each session it is
-// attached to. Rex keeps one active window per session, not per app, so
-// every app attached to a session gets that session's active window.
-func (c *Client) ShownWindows(ctx context.Context) ([]ShownWindow, error) {
-	apps, err := c.Apps(ctx)
-	if err != nil {
-		return nil, err
-	}
-	active := map[string]string{}
-	var shown []ShownWindow
-	for _, app := range apps {
-		for _, sessionID := range app.SessionIDs {
-			window, ok := active[sessionID]
-			if !ok {
-				view, err := c.View(ctx, sessionID)
-				if err != nil {
-					return nil, fmt.Errorf("reading the window app %s shows: %w", app.ClientID, err)
-				}
-				window = view.ActiveWindowID
-				active[sessionID] = window
-			}
-			if window != "" {
-				shown = append(shown, ShownWindow{ClientID: app.ClientID, SessionID: sessionID, WindowID: window})
-			}
-		}
-	}
-	return shown, nil
-}
-
 // Start runs a command in a new window and returns where it went. A new
 // session it made is destroyed again if the window can't be made.
 func (c *Client) Start(ctx context.Context, opts StartOptions) (Started, error) {
@@ -261,6 +232,34 @@ func (c *Client) newWindow(ctx context.Context, sessionID string, opts StartOpti
 		return Started{}, fmt.Errorf("rex session.new_window: made %d blocks, want 1", len(out.BlockIDs))
 	}
 	return Started{SessionID: sessionID, WindowID: out.WindowID, BlockID: out.BlockIDs[0]}, nil
+}
+
+// OpenLayer runs a command in a new floating layer at the front of a window,
+// focused. The layer closes with its block when the command exits.
+func (c *Client) OpenLayer(ctx context.Context, opts LayerOptions) (Layer, error) {
+	options := map[string]any{"command": opts.Command}
+	if opts.Dir != "" {
+		options["cwd"] = opts.Dir
+	}
+	// The block is this call's until the CLI exits, which lets it go, so
+	// the app sizes it as soon as the call returns.
+	args := map[string]any{
+		"window_id": opts.WindowID,
+		"bounds":    opts.Bounds,
+		"focus":     true,
+		"layout":    map[string]any{"block": map[string]any{"flavor": "com.superlogical.terminal.shell", "options": options}},
+	}
+	var out struct {
+		LayerID  string   `json:"layer_id"`
+		BlockIDs []string `json:"block_ids"`
+	}
+	if err := c.call(ctx, opts.SessionID, "session.new_layer", args, &out); err != nil {
+		return Layer{}, err
+	}
+	if len(out.BlockIDs) != 1 {
+		return Layer{}, fmt.Errorf("rex session.new_layer: made %d blocks, want 1", len(out.BlockIDs))
+	}
+	return Layer{ID: out.LayerID, BlockID: out.BlockIDs[0]}, nil
 }
 
 // CloseBlock closes a block, ending its program. Rex closes the window too

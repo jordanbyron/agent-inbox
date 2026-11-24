@@ -214,6 +214,5 @@ func TestListActions(t *testing.T) {
 	require.NoError(t, actions.Delete("a1"))
 	require.Empty(t, w.state(t).Records)
 
-	require.ErrorContains(t, actions.New(), "not wired yet")
 	require.ErrorContains(t, actions.Wake("a1"), `no agent "a1"`)
 }

@@ -27,11 +27,16 @@ func Builtins() Set {
 			Name: "codex",
 			App:  "codex",
 			// Codex has no effort flag, so effort goes in as a config
-			// override. Permissions pick the sandbox; approval stays
-			// on-request, Codex's own default.
+			// override. Each permissions choice sets both the sandbox and
+			// the approval policy, as claude-inbox did.
 			Start: []string{
 				"codex", "--model", "{model}", "-c", "model_reasoning_effort={effort}",
 				"--sandbox", "{permissions}", "--", "{prompt}",
+			},
+			PermissionArgs: map[string][]string{
+				"read-only":          {"--sandbox", "read-only", "--ask-for-approval", "on-request"},
+				"workspace-write":    {"--sandbox", "workspace-write", "--ask-for-approval", "on-request"},
+				"danger-full-access": {"--sandbox", "danger-full-access", "--ask-for-approval", "never"},
 			},
 			Resume:       []string{"codex", "resume", "{session_id}"},
 			ResumeLatest: []string{"codex", "resume", "--last"},
@@ -60,7 +65,7 @@ func Builtins() Set {
 				Effort:      efforts,
 				Permissions: []string{"default", "accept-edits", "auto", "plan"},
 			},
-			Sessions: AgySessions{SQLite: "sqlite3"},
+			Sessions: AgySessions{},
 		},
 	}
 }

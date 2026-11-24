@@ -3,6 +3,8 @@
 package list
 
 import (
+	"fmt"
+	"os/exec"
 	"slices"
 	"strings"
 	"time"
@@ -38,6 +40,9 @@ type Config struct {
 	Now     func() time.Time
 	// Home is shortened to ~ in the directories the list shows.
 	Home string
+	// Restart starts the watcher again, for a snapshot gone stale while
+	// the list is on screen. Nil leaves the watcher alone.
+	Restart func() error
 }
 
 // ReloadMsg tells the model that the snapshot file changed.
@@ -51,6 +56,7 @@ type Model struct {
 	actions Actions
 	now     func() time.Time
 	home    string
+	restart func() error
 
 	snap      snapshot.Snapshot
 	loaded    bool
@@ -73,6 +79,12 @@ type Model struct {
 	notice      string
 	noticeUntil time.Time
 	spinner     spinner.Model
+	// busy names the action running in the background, while one is.
+	busy string
+
+	restarting  bool
+	restartedAt time.Time
+	restartErr  error
 }
 
 // New returns the list, with the snapshot read once so the first frame has
@@ -83,6 +95,7 @@ func New(c Config) Model {
 		actions:  c.Actions,
 		now:      c.Now,
 		home:     c.Home,
+		restart:  c.Restart,
 		expanded: map[triage.Section]bool{},
 		filter:   newInput("", 0),
 		spinner:  spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(theme.Yellow)),
@@ -122,11 +135,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reload()
 	case tickMsg:
 		m.reload()
-		cmd = tick()
+		cmd = tea.Batch(tick(), m.restartIfStale())
+	case restartMsg:
+		m.restarted(msg.err)
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 	case tea.KeyPressMsg:
 		cmd = m.press(msg)
+	case doneMsg:
+		m.finish(msg)
+	case formMsg:
+		cmd = m.runForm(msg)
 	}
 	m.keepSelection()
 	m.scroll()
@@ -146,6 +165,30 @@ func (m *Model) reload() {
 
 func (m Model) stale() bool {
 	return m.loaded && m.now().Sub(m.writtenAt) > StaleAfter
+}
+
+// restartMsg says how starting the watcher again went.
+type restartMsg struct{ err error }
+
+// restartIfStale starts the watcher again when its snapshot has gone stale,
+// at most once in StaleAfter, so one that won't start isn't hammered.
+func (m *Model) restartIfStale() tea.Cmd {
+	if m.restart == nil || m.restarting || !m.stale() || m.now().Sub(m.restartedAt) < StaleAfter {
+		return nil
+	}
+	m.restarting, m.restartedAt = true, m.now()
+	restart := m.restart
+	return func() tea.Msg { return restartMsg{err: restart()} }
+}
+
+func (m *Model) restarted(err error) {
+	m.restarting, m.restartErr = false, err
+	if err != nil {
+		m.say(err.Error())
+		return
+	}
+	m.say("started the watcher again")
+	m.reload()
 }
 
 func (m *Model) press(msg tea.KeyPressMsg) tea.Cmd {
@@ -183,7 +226,7 @@ func (m *Model) perform(a action) tea.Cmd {
 	case actionPrevSection:
 		m.jumpSection(-1)
 	case actionActivate:
-		m.activate()
+		return m.activate()
 	case actionFoldOpen:
 		m.setExpanded(true)
 	case actionFoldClose:
@@ -193,32 +236,31 @@ func (m *Model) perform(a action) tea.Cmd {
 			m.setExpanded(!m.expanded[section])
 		}
 	case actionNew:
-		m.succeeded(m.actions.New())
+		return m.openForm()
 	case actionFilter:
 		m.filtering = true
 	case actionEscape:
 		m.clearFilter()
 	default:
-		m.performOnRow(a)
+		return m.performOnRow(a)
 	}
 	return nil
 }
 
-func (m *Model) performOnRow(a action) {
+func (m *Model) performOnRow(a action) tea.Cmd {
 	row, ok := m.selectedRow()
 	if !ok {
-		return
+		return nil
 	}
+	key := row.Key
 	switch a {
 	case actionTogglePin:
-		m.succeeded(m.actions.TogglePin(row.Key))
+		return m.run("pinning", func(a Actions) error { return a.TogglePin(key) }, afterAction{})
 	case actionWake:
-		m.succeeded(m.actions.Wake(row.Key))
+		return m.run("waking", func(a Actions) error { return a.Wake(key) }, afterAction{})
 	case actionSettle:
-		if m.succeeded(m.actions.Settle(row.Key)) {
-			m.selectNeighbor()
-			m.say("settled — u brings it back")
-		}
+		return m.run("settling", func(a Actions) error { return a.Settle(key) },
+			afterAction{leaving: key, notice: "settled — u brings it back"})
 	case actionSnooze:
 		m.dialog = snoozeMenu{key: row.Key}
 	case actionAlias:
@@ -228,10 +270,11 @@ func (m *Model) performOnRow(a action) {
 	case actionDelete:
 		m.dialog = m.deleteConfirm(row)
 	case actionOpenPullRequest:
-		m.pickPullRequest(pickOpen, row)
+		return m.pickPullRequest(pickOpen, row)
 	case actionCopyPullRequest:
-		m.pickPullRequest(pickCopy, row)
+		return m.pickPullRequest(pickCopy, row)
 	}
+	return nil
 }
 
 func linkedURL(row snapshot.Row) string {
@@ -246,27 +289,25 @@ func linkedURL(row snapshot.Row) string {
 	return ""
 }
 
-func (m *Model) pickPullRequest(verb pickVerb, row snapshot.Row) {
+func (m *Model) pickPullRequest(verb pickVerb, row snapshot.Row) tea.Cmd {
 	switch len(row.PullRequests) {
 	case 0:
 		m.say("no pull request linked — P sets one")
 	case 1:
-		m.usePullRequest(verb, row.PullRequests[0])
+		return m.usePullRequest(verb, row.PullRequests[0])
 	default:
 		m.dialog = newPicker(verb, row.PullRequests)
 	}
+	return nil
 }
 
-func (m *Model) usePullRequest(verb pickVerb, pr state.PullRequest) {
+func (m *Model) usePullRequest(verb pickVerb, pr state.PullRequest) tea.Cmd {
 	if verb == pickOpen {
-		if m.succeeded(m.actions.OpenPullRequest(pr.URL)) {
-			m.say("opening " + prName(pr))
-		}
-		return
+		return m.run("opening", func(a Actions) error { return a.OpenPullRequest(pr.URL) },
+			afterAction{notice: "opening " + prName(pr)})
 	}
-	if m.succeeded(m.actions.CopyPullRequest(pr.URL)) {
-		m.say("copied " + prName(pr))
-	}
+	return m.run("copying", func(a Actions) error { return a.CopyPullRequest(pr.URL) },
+		afterAction{notice: "copied " + prName(pr)})
 }
 
 func (m *Model) deleteConfirm(row snapshot.Row) confirmDelete {
@@ -274,22 +315,95 @@ func (m *Model) deleteConfirm(row snapshot.Row) confirmDelete {
 	return confirmDelete{key: row.Key, label: family[0].Label, family: len(family) > 1}
 }
 
-func (m *Model) activate() {
+func (m *Model) activate() tea.Cmd {
 	if m.selected.isFold() {
 		m.setExpanded(true)
-		return
+		return nil
 	}
-	if row, ok := m.selectedRow(); ok {
-		m.succeeded(m.actions.Open(row.Key))
+	row, ok := m.selectedRow()
+	if !ok {
+		return nil
+	}
+	return m.run("showing", func(a Actions) error { return a.Open(row.Key) }, afterAction{})
+}
+
+// doneMsg says how an action run by run went.
+type doneMsg struct {
+	err  error
+	then afterAction
+}
+
+// afterAction is what the list does once an action succeeds.
+type afterAction struct {
+	notice string
+	// leaving is the row the action takes out of its section, so the
+	// cursor steps off it rather than follow it.
+	leaving string
+	// dialog closes when the action succeeds, and stays up to be fixed
+	// when it is refused.
+	dialog dialog
+}
+
+// run calls an action in a Cmd, since one that goes to Rex or git can take
+// a second, and says what it is doing meanwhile. One runs at a time.
+func (m *Model) run(doing string, call func(Actions) error, then afterAction) tea.Cmd {
+	if m.busy != "" {
+		return nil
+	}
+	m.busy, m.notice = doing, ""
+	actions := m.actions
+	return func() tea.Msg { return doneMsg{err: call(actions), then: then} }
+}
+
+// formMsg is what Actions.New returned.
+type formMsg struct {
+	cmd *exec.Cmd
+	err error
+}
+
+func (m *Model) openForm() tea.Cmd {
+	if m.busy != "" {
+		return nil
+	}
+	m.busy, m.notice = "opening the form", ""
+	actions := m.actions
+	return func() tea.Msg {
+		cmd, err := actions.New()
+		return formMsg{cmd: cmd, err: err}
 	}
 }
 
-func (m *Model) succeeded(err error) bool {
-	if err != nil {
-		m.say(err.Error())
-		return false
+// runForm hands the terminal to the form when it has to run here, and
+// takes it back when the form exits.
+func (m *Model) runForm(msg formMsg) tea.Cmd {
+	if msg.err != nil || msg.cmd == nil {
+		m.finish(doneMsg{err: msg.err})
+		return nil
 	}
-	return true
+	return tea.ExecProcess(msg.cmd, func(err error) tea.Msg {
+		if err != nil {
+			err = fmt.Errorf("the new-agent form: %w", err)
+		}
+		return doneMsg{err: err}
+	})
+}
+
+func (m *Model) finish(msg doneMsg) {
+	m.busy = ""
+	if msg.err != nil {
+		m.say(msg.err.Error())
+		return
+	}
+	if msg.then.leaving != "" && m.selected == rowStop(msg.then.leaving) {
+		m.selectNeighbor()
+	}
+	if msg.then.dialog != nil && m.dialog == msg.then.dialog {
+		m.dialog = nil
+	}
+	if msg.then.notice != "" {
+		m.say(msg.then.notice)
+	}
+	m.reload()
 }
 
 func (m *Model) say(notice string) {
@@ -299,6 +413,9 @@ func (m *Model) say(notice string) {
 func (m Model) status() string {
 	if m.notice != "" && m.now().Before(m.noticeUntil) {
 		return m.notice
+	}
+	if m.busy != "" {
+		return m.busy + "…"
 	}
 	if m.loadErr != nil {
 		return "⚠ " + m.loadErr.Error()

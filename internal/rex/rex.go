@@ -89,13 +89,6 @@ type App struct {
 	SessionIDs []string
 }
 
-// ShownWindow is the window an app shows for one session it is attached to.
-type ShownWindow struct {
-	ClientID  string
-	SessionID string
-	WindowID  string
-}
-
 // StartOptions says where and how Client.Start runs a command.
 type StartOptions struct {
 	// SessionID is the session to open a window in. Empty makes a new
@@ -116,4 +109,21 @@ type Started struct {
 	SessionID string
 	WindowID  string
 	BlockID   string
+}
+
+// LayerOptions says where and how Client.OpenLayer runs a command.
+type LayerOptions struct {
+	SessionID string
+	WindowID  string
+	Command   []string
+	Dir       string
+	// Bounds is the layer's x, y, width and height, each a fraction of the
+	// window's size.
+	Bounds [4]float64
+}
+
+// Layer is where Client.OpenLayer put the command.
+type Layer struct {
+	ID      string
+	BlockID string
 }

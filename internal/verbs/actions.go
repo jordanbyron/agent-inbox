@@ -2,7 +2,7 @@ package verbs
 
 import (
 	"context"
-	"errors"
+	"os/exec"
 	"time"
 
 	"github.com/jordanbyron/agent-inbox/internal/list"
@@ -65,8 +65,8 @@ func (l listActions) Delete(key string) error {
 	return err
 }
 
-func (listActions) New() error {
-	return errors.New("new is not wired yet")
+func (l listActions) New() (*exec.Cmd, error) {
+	return l.inbox.OpenForm(l.ctx)
 }
 
 func (l listActions) OpenPullRequest(url string) error {

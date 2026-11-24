@@ -53,10 +53,9 @@ func TestOneAgentsLife(t *testing.T) {
 	h := newHarness(t)
 	repo := newRepo(t, "fix-login")
 	work := h.rex.AddSession("work")
-	editor, err := h.rex.AddWindow(work, "editor")
-	require.NoError(t, err)
+	editor, _ := h.tab(work, "")
 	tab, block := h.tab(work, "agent-inbox:a1")
-	h.rex.AddApp("Rex", work)
+	app := h.rex.AddApp("Rex", work)
 	h.edit(func(st *state.State) { st.Records["a1"] = inWorktree(work, repo) })
 	h.start()
 
@@ -81,7 +80,7 @@ func TestOneAgentsLife(t *testing.T) {
 
 	// 4. You show the tab: the agent is seen and moves to Active.
 	h.clock.Advance(time.Minute)
-	require.NoError(t, h.rex.SetActiveWindow(work, tab))
+	require.NoError(t, h.rex.Display(app, work, tab))
 	row = h.waitSection("a1", active)
 	require.True(t, row.Read)
 	entry := h.state().Entries["a1"]
@@ -101,7 +100,7 @@ func TestOneAgentsLife(t *testing.T) {
 	}}, h.state().PullRequests["a1"])
 
 	// 6. It merges while you look elsewhere: the tab closes and it settles.
-	require.NoError(t, h.rex.SetActiveWindow(work, editor))
+	require.NoError(t, h.rex.Display(app, work, editor))
 	h.gh.set(912, ghPR{state: "MERGED", closedAt: t0.Add(2 * time.Minute)}, "fix-login")
 	h.clock.Advance(pulls.RefreshAfter)
 	row = h.waitSection("a1", settled)
@@ -110,6 +109,41 @@ func TestOneAgentsLife(t *testing.T) {
 	require.Equal(t, h.clock.Now(), h.state().Entries["a1"].SettledAt.UTC())
 	h.waitLog("closed a tab")
 	require.Contains(t, h.log.String(), "#912 merged")
+}
+
+// Rex.app attaches to every session, so the active window of a session it
+// isn't displaying must not count as seen.
+func TestSeenIsTheTabAnAppDisplays(t *testing.T) {
+	h := newHarness(t)
+	work := h.rex.AddSession("work")
+	tab, block := h.tab(work, "agent-inbox:a1")
+	other := h.rex.AddSession("other")
+	elsewhere, _ := h.tab(other, "")
+	app := h.rex.AddApp("Rex", work, other)
+	require.NoError(t, h.rex.SetStatus(work, block, blocked))
+	h.edit(func(st *state.State) { st.Records["a1"] = launched(work, "/r/app") })
+	h.start()
+
+	row := h.waitSection("a1", needsYou)
+	require.False(t, row.Read, "with nothing displayed yet, nothing is seen, though the tab is its session's active one")
+
+	require.NoError(t, h.rex.Display(app, other, elsewhere))
+	again := blocked
+	again.Msg = "approve Bash: pwd"
+	h.status(work, block, again)
+	_, section := h.waitRow("a1", func(r snapshot.Row) bool { return r.Detail == again.Msg })
+	require.Equal(t, needsYou, section, "the app shows another session")
+
+	require.NoError(t, h.rex.Show(t.Context(), work, block))
+	row = h.waitSection("a1", active)
+	require.True(t, row.Read)
+	require.Equal(t, tab, row.RexWindow)
+
+	require.NoError(t, h.rex.Display(app, other, elsewhere))
+	h.clock.Advance(time.Minute)
+	h.status(work, block, working)
+	h.status(work, block, blocked)
+	h.waitSection("a1", needsYou)
 }
 
 func TestFoundAgentComesAndGoes(t *testing.T) {
