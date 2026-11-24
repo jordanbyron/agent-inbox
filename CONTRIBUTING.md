@@ -16,6 +16,31 @@ builds them, which takes a minute; after that they come from Go's build cache.
 go run ./cmd/agent-inbox version
 ```
 
+Against the live Rex server, keep your real state and config out of it:
+
+```sh
+export XDG_STATE_HOME=$(mktemp -d) XDG_CONFIG_HOME=$(mktemp -d)
+go build -o /tmp/agent-inbox ./cmd/agent-inbox
+/tmp/agent-inbox                              # starts a watcher on the scratch state
+pkill -f '/tmp/agent-inbox watch'             # stop it when you're done
+```
+
+The watcher outlives the command that started it, and a list opened in a
+Rex pane runs in the login shell's environment, without these variables.
+
+To draw the list with no Rex at all:
+
+```sh
+go run ./cmd/agent-inbox list --fixture internal/snapshot/testdata/fixture.json
+```
+
+Two test suites talk to real services and are skipped unless asked for:
+
+```sh
+AGENT_INBOX_LIVE_REX=1 go test ./internal/rex  # a throwaway Rex session
+AGENT_INBOX_LIVE_GH=1 go test ./internal/pulls # this repository on GitHub
+```
+
 ## Local CI and signoff
 
 There's no hosted CI. `bin/ci` runs on your machine and reports back with
