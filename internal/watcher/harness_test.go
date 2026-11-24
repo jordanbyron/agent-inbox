@@ -87,6 +87,8 @@ type fakeGH struct {
 	mu       sync.Mutex
 	branches map[string]int
 	prs      map[int]ghPR
+	// hangs is how many calls, from the next, hang until their context ends.
+	hangs int
 }
 
 func newFakeGH() *fakeGH {
@@ -107,8 +109,14 @@ var (
 	numberField = regexp.MustCompile(`pr(\d+): pullRequest\(number: \d+\)`)
 )
 
-func (g *fakeGH) Run(_ context.Context, _ string, args ...string) ([]byte, error) {
+func (g *fakeGH) Run(ctx context.Context, _ string, args ...string) ([]byte, error) {
 	g.mu.Lock()
+	if g.hangs > 0 {
+		g.hangs--
+		g.mu.Unlock()
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
 	defer g.mu.Unlock()
 	fields := map[string]any{}
 	for _, arg := range args {

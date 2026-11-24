@@ -13,6 +13,7 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/triage"
+	"github.com/jordanbyron/agent-inbox/internal/watcher"
 )
 
 // mergedAgent starts a watcher on one launched agent, idle in its own tab
@@ -308,6 +309,20 @@ func TestAutoSettleWaitsWhileTheStateCantBeWritten(t *testing.T) {
 
 	require.NoError(t, os.Chmod(h.dir, 0o700))
 	h.clock.Advance(time.Second)
+	h.waitSection("a1", settled)
+	require.Equal(t, []string{tab}, h.rex.ClosedWindows())
+}
+
+func TestAHungGHCallGivesUpAndIsTriedAgain(t *testing.T) {
+	watcher.ShortenTimeouts(t, 10*time.Millisecond)
+	h, _, _, _, tab := mergedAgent(t)
+	h.gh.mu.Lock()
+	h.gh.hangs = 1
+	h.gh.mu.Unlock()
+
+	h.clock.Advance(pulls.RefreshAfter)
+	h.waitLog("context deadline exceeded")
+	h.clock.Advance(pulls.RefreshAfter)
 	h.waitSection("a1", settled)
 	require.Equal(t, []string{tab}, h.rex.ClosedWindows())
 }

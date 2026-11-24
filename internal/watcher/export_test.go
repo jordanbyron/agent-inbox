@@ -1,6 +1,9 @@
 package watcher
 
 import (
+	"testing"
+	"time"
+
 	"github.com/jordanbyron/agent-inbox/internal/notify"
 	"github.com/jordanbyron/agent-inbox/internal/recipe"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
@@ -60,4 +63,12 @@ func internalMoments(in map[string]Moment) map[string]moment {
 		}
 	}
 	return out
+}
+
+// ShortenTimeouts bounds the watcher's gh, git and reap work by d for the
+// rest of the test.
+func ShortenTimeouts(t *testing.T, d time.Duration) {
+	find, reap := findTimeout, reapTimeout
+	findTimeout, reapTimeout = d, d
+	t.Cleanup(func() { findTimeout, reapTimeout = find, reap })
 }

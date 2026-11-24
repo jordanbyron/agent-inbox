@@ -35,6 +35,14 @@ const (
 	reapEvery       = 10 * time.Minute
 )
 
+// The finder's gh and git calls and each reap sweep get a deadline, since
+// one that hung would stop the finder or the loop for good. A rex call
+// needs none: the rex CLI gives up on its own after 10 seconds.
+var (
+	findTimeout = time.Minute
+	reapTimeout = 2 * time.Minute
+)
+
 // Options is what Run needs from outside.
 type Options struct {
 	Rex   Rex

@@ -442,6 +442,8 @@ func (w *watcher) reapDue(ctx context.Context, now time.Time) bool {
 		return false
 	}
 	w.lastReap = now
+	ctx, cancel := context.WithTimeout(ctx, reapTimeout)
+	defer cancel()
 	reaped := false
 	for _, r := range w.reaper.Sweep(ctx, w.st, now) {
 		days := int(now.Sub(r.LastSettledAt).Hours() / 24)

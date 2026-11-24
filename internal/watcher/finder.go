@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"strings"
@@ -45,7 +46,7 @@ func (f *finder) work(ctx context.Context, jobs <-chan job, findings chan<- find
 		case <-ctx.Done():
 			return
 		case j := <-jobs:
-			found := j.run(ctx, f)
+			found := f.run(ctx, j)
 			select {
 			case findings <- found:
 			case <-ctx.Done():
@@ -55,10 +56,16 @@ func (f *finder) work(ctx context.Context, jobs <-chan job, findings chan<- find
 	}
 }
 
+func (f *finder) run(ctx context.Context, j job) finding {
+	ctx, cancel := context.WithTimeout(ctx, findTimeout)
+	defer cancel()
+	return j.run(ctx, f)
+}
+
 // warn logs a failed gh, git or capture call, unless the watcher is
 // stopping and the failure is only that.
 func (f *finder) warn(ctx context.Context, msg string, args ...any) {
-	if ctx.Err() == nil {
+	if !errors.Is(ctx.Err(), context.Canceled) {
 		f.log.Warn(msg, args...)
 	}
 }

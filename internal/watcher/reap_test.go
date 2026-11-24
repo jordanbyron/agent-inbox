@@ -13,6 +13,7 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/triage"
+	"github.com/jordanbyron/agent-inbox/internal/watcher"
 )
 
 type fakeDeleter struct {
@@ -68,4 +69,27 @@ func TestWatcherReapsWhatIsDue(t *testing.T) {
 			require.Equal(t, c.asked, deleter.asked())
 		})
 	}
+}
+
+// hungDeleter never finishes a delete until its context ends.
+type hungDeleter struct{}
+
+func (hungDeleter) DeleteFamily(ctx context.Context, _ string) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestAHungReapGivesUpAndTheWatcherGoesOn(t *testing.T) {
+	watcher.ShortenTimeouts(t, 10*time.Millisecond)
+	h := newHarness(t)
+	h.cfg.Reap, h.deleter = true, hungDeleter{}
+	h.edit(func(st *state.State) {
+		st.Records["old"] = launched("work", "/r/old")
+		st.Entries["old"] = triage.Entry{LastState: triage.StatusIdle, SettledAt: t0.Add(-reap.After)}
+	})
+
+	h.start()
+
+	h.waitLog("kept a family reap is due to delete")
+	h.heartbeat()
 }
