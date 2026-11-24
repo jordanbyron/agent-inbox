@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -88,8 +89,23 @@ func newInbox(srv server) (*verbs.Inbox, error) {
 		},
 		Getenv: os.Getenv,
 		Home:   home,
-		Form:   []string{exe, "new"},
+		Form:   formCommand(exe),
 	}, nil
+}
+
+// formCommand runs this binary's new. A Rex layer starts it in Rex's own
+// environment, so the variables that choose its config and state go along.
+func formCommand(exe string) []string {
+	var env []string
+	for _, name := range []string{"XDG_CONFIG_HOME", "XDG_STATE_HOME"} {
+		if value, ok := os.LookupEnv(name); ok {
+			env = append(env, name+"="+value)
+		}
+	}
+	if env == nil {
+		return []string{exe, "new"}
+	}
+	return slices.Concat([]string{"env"}, env, []string{exe, "new"})
 }
 
 func newNewCommand(open inboxOpener) *cobra.Command {

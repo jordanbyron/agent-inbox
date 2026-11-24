@@ -21,3 +21,6 @@ var FormOptions = formOptions
 
 // FromForm is how new turns the form's result back into a request.
 var FromForm = fromForm
+
+// FormCommand is the command n runs to show the form.
+var FormCommand = formCommand

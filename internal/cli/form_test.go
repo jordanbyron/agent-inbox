@@ -67,3 +67,11 @@ func TestTheFormsChoicesAreWhatStarts(t *testing.T) {
 	require.Equal(t, "typed", req.Name)
 	require.True(t, req.Show)
 }
+
+func TestTheFormKeepsTheListsConfigAndState(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "/scratch/config")
+	t.Setenv("XDG_STATE_HOME", "/scratch/state")
+
+	require.Equal(t, []string{"env", "XDG_CONFIG_HOME=/scratch/config", "XDG_STATE_HOME=/scratch/state", "/bin/agent-inbox", "new"},
+		cli.FormCommand("/bin/agent-inbox"))
+}
