@@ -28,6 +28,7 @@ type inboxOpener func(ctx context.Context) (*verbs.Inbox, error)
 func verbCommands(open inboxOpener) []*cobra.Command {
 	return []*cobra.Command{
 		newNewCommand(open),
+		newOpenCommand(open),
 		newSnoozeCommand(open),
 		newWakeCommand(open),
 		newPinCommand(open),
@@ -152,6 +153,17 @@ func start(cmd *cobra.Command, inbox *verbs.Inbox, req verbs.StartRequest) error
 		say(cmd, "started %s (%s)", a.Name, a.Key)
 	}
 	return err
+}
+
+func newOpenCommand(open inboxOpener) *cobra.Command {
+	return verbCommand(open, verbSpec{
+		use:   "open [AGENT]",
+		short: "Show an agent's tab, restoring it first if it is settled",
+		run: func(ctx context.Context, inbox *verbs.Inbox, t verbs.Target, _ string) (string, error) {
+			a, err := inbox.Open(ctx, t)
+			return "showing " + a.Name, err
+		},
+	})
 }
 
 func newSnoozeCommand(open inboxOpener) *cobra.Command {

@@ -163,6 +163,27 @@ func TestTheVerbsFindTheAgentByBlock(t *testing.T) {
 	require.Equal(t, "aliased "+strings.TrimPrefix(f.windows(t)[0].Blocks[0].Label, verbs.LabelPrefix)+" to me", f.must(t, "alias", "me"))
 }
 
+func TestOpen(t *testing.T) {
+	f := newFixture(t)
+	f.must(t, "new", "--prompt", "hi", "--cwd", t.TempDir(), "--session", "work")
+	block := f.windows(t)[0].Blocks[0].ID
+	id := strings.TrimPrefix(f.windows(t)[0].Blocks[0].Label, verbs.LabelPrefix)
+
+	require.Equal(t, "showing hi", f.must(t, "open", id))
+	require.Equal(t, "showing hi", f.must(t, "open", "--block", block))
+	f.env["REX_SESSION"], f.env["REX_BLOCK"] = f.session, block
+	require.Equal(t, "showing hi", f.must(t, "open"))
+	require.Equal(t, []string{block, block, block}, f.rex.Shown())
+
+	f.must(t, "settle", id)
+	require.Equal(t, "showing hi", f.must(t, "open", id), "a settled agent is restored to be shown")
+	require.Len(t, f.windows(t), 1)
+	require.Len(t, f.rex.Shown(), 4)
+
+	_, err := f.run(t, "open", "nope")
+	require.ErrorContains(t, err, `no agent "nope"`)
+}
+
 func TestNewStartsInThePanesSession(t *testing.T) {
 	f := newFixture(t)
 	f.env["REX_SESSION"], f.env["REX_BLOCK"] = f.session, "block:elsewhere"
