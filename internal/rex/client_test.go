@@ -55,7 +55,13 @@ func fakeRex(t *testing.T, replies ...reply) (*rex.Client, func() []string) {
 			return nil
 		}
 		require.NoError(t, err)
-		return strings.Split(strings.TrimSpace(string(data)), "\n")
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		for i, line := range lines {
+			rest, found := strings.CutPrefix(line, "--autostart=false ")
+			require.True(t, found, "rex was run without --autostart=false: %s", line)
+			lines[i] = rest
+		}
+		return lines
 	}
 	return rex.New(bin), calls
 }

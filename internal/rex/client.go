@@ -351,7 +351,7 @@ func (c *Client) call(ctx context.Context, sessionID, method string, args, out a
 }
 
 func (c *Client) run(ctx context.Context, name string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, c.bin, args...)
+	cmd := exec.CommandContext(ctx, c.bin, append([]string{noAutostart}, args...)...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -367,3 +367,7 @@ func (c *Client) run(ctx context.Context, name string, args ...string) ([]byte, 
 	}
 	return stdout.Bytes(), nil
 }
+
+// The CLI starts a missing local server by default. A watcher asking whether
+// Rex is still there must not be the thing that brings it back.
+const noAutostart = "--autostart=false"

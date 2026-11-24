@@ -80,7 +80,7 @@ func (c *Client) Events(ctx context.Context) (<-chan Event, <-chan error) {
 }
 
 func (c *Client) stream(ctx context.Context, events chan<- Event) error {
-	cmd := exec.CommandContext(ctx, c.bin, "events", "--all", "--json")
+	cmd := exec.CommandContext(ctx, c.bin, noAutostart, "events", "--all", "--json")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	stdout, err := cmd.StdoutPipe()
