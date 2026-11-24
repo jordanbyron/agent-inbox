@@ -15,6 +15,7 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/config"
 	"github.com/jordanbyron/agent-inbox/internal/notify"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
+	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
 	"github.com/jordanbyron/agent-inbox/internal/state"
@@ -57,6 +58,9 @@ type watcher struct {
 	// moments are the families at the last observation, nil before the first.
 	moments map[string]moment
 	notes   chan notify.Notification
+
+	reaper   *reap.Reaper
+	lastReap time.Time
 }
 
 func newWatcher(opts Options, store *state.Store) (*watcher, error) {
@@ -87,6 +91,9 @@ func newWatcher(opts Options, store *state.Store) (*watcher, error) {
 	}
 	if opts.Config.Notify {
 		w.notifier = opts.Notifier
+	}
+	if opts.Config.Reap && opts.Deleter != nil {
+		w.reaper = &reap.Reaper{Deleter: opts.Deleter}
 	}
 	return w, nil
 }
@@ -262,6 +269,9 @@ func (w *watcher) settle(ctx context.Context) {
 	if w.autoSettle(ctx, now) {
 		w.record(now)
 	}
+	if w.reapDue(ctx, now) {
+		w.record(now)
+	}
 	if w.notifier != nil {
 		w.notifyChanges(now)
 	}
@@ -400,4 +410,23 @@ func (w *watcher) watchState() *fsnotify.Watcher {
 
 func isStateFile(event fsnotify.Event) bool {
 	return filepath.Base(event.Name) == "state.json"
+}
+
+func (w *watcher) reapDue(ctx context.Context, now time.Time) bool {
+	if w.reaper == nil || now.Sub(w.lastReap) < reapEvery {
+		return false
+	}
+	w.lastReap = now
+	reaped := false
+	for _, r := range w.reaper.Sweep(ctx, w.st, now) {
+		days := int(now.Sub(r.LastSettledAt).Hours() / 24)
+		if r.Err != nil {
+			w.log.Warn("kept a family reap is due to delete; trying again in a day",
+				"agent", r.Key, "name", r.Name, "settled_days", days, "err", r.Err)
+			continue
+		}
+		w.log.Info("reaped a family", "agent", r.Key, "name", r.Name, "members", r.Members, "settled_days", days)
+		reaped = true
+	}
+	return reaped
 }

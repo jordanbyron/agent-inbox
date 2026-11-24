@@ -13,6 +13,7 @@ import (
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
+	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/worktree"
 )
@@ -31,6 +32,7 @@ const (
 	// branchScanEvery is how often a launched agent's worktree is checked
 	// for new branches between turns.
 	branchScanEvery = 2 * time.Minute
+	reapEvery       = 10 * time.Minute
 )
 
 // Options is what Run needs from outside.
@@ -48,6 +50,8 @@ type Options struct {
 	Log *slog.Logger
 	// Notifier sends what Config.Notify asks for; nil sends nothing.
 	Notifier Notifier
+	// Deleter deletes what Config.Reap reaps; nil reaps nothing.
+	Deleter reap.Deleter
 }
 
 // Run takes the watcher lock and watches Rex until ctx ends or the Rex

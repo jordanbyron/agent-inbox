@@ -20,6 +20,7 @@ import (
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
 	"github.com/jordanbyron/agent-inbox/internal/notify"
+	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/rex/rextest"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
@@ -177,6 +178,7 @@ type harness struct {
 	done     chan error
 	cfg      config.Config
 	notifier *fakeNotifier
+	deleter  reap.Deleter
 }
 
 type fakeNotifier struct {
@@ -221,6 +223,7 @@ func (h *harness) start() {
 		Config:   h.cfg,
 		Version:  "v-test",
 		Log:      slog.New(slog.NewTextHandler(h.log, nil)),
+		Deleter:  h.deleter,
 	}
 	if h.notifier != nil {
 		opts.Notifier = h.notifier
