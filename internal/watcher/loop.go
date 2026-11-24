@@ -215,7 +215,9 @@ func (w *watcher) reconnect(ctx context.Context) (<-chan rex.Event, <-chan error
 	events, ended := w.rex.Events(ctx)
 	if err := w.scan(ctx); err != nil {
 		w.log.Warn("scanning Rex after reconnecting", "err", err)
+		return events, ended
 	}
+	w.log.Info("reconnected to the Rex event stream")
 	return events, ended
 }
 
@@ -355,6 +357,9 @@ func findJob(a agent) job {
 // autoSettle closes the blocks of every family whose work has landed, and
 // reports whether it closed any. The observation after it settles them.
 func (w *watcher) autoSettle(ctx context.Context, now time.Time) bool {
+	if !w.world.knowsWhatAppsShow() {
+		return false
+	}
 	closed := false
 	for _, c := range toAutoSettle(w.agents, w.st, now) {
 		if w.unclosable[c.blockID] {

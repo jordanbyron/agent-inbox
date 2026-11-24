@@ -18,6 +18,9 @@ type world struct {
 	// showing is the tab each app last displayed. An app with none yet
 	// shows nothing as far as the watcher knows.
 	showing map[string]tab
+	// heard holds the apps that have displayed a tab since this picture
+	// was scanned. Until every app has, what they show is a guess.
+	heard map[string]bool
 }
 
 type tab struct {
@@ -42,7 +45,7 @@ type block struct {
 }
 
 func newWorld() *world {
-	return &world{sessions: map[string]*session{}, apps: map[string][]string{}, showing: map[string]tab{}}
+	return &world{sessions: map[string]*session{}, apps: map[string][]string{}, showing: map[string]tab{}, heard: map[string]bool{}}
 }
 
 // setView replaces what is known of a session's windows with view. A block
@@ -119,6 +122,7 @@ func (w *world) setApps(apps []rex.App) {
 		w.apps[app.ClientID] = app.SessionIDs
 	}
 	maps.DeleteFunc(w.showing, func(clientID string, _ tab) bool { return !w.isApp(clientID) })
+	maps.DeleteFunc(w.heard, func(clientID string, _ bool) bool { return !w.isApp(clientID) })
 }
 
 // keepShowing carries over from before a scan what each app was showing,
@@ -152,7 +156,25 @@ func (w *world) sized(sessionID, blockID, clientID string) bool {
 		return false
 	}
 	w.showing[clientID] = tab{sessionID: sessionID, windowID: b.windowID}
+	w.heard[clientID] = true
 	return true
+}
+
+// knowsWhatAppsShow reports whether every connected app has displayed a
+// tab since the last scan. Rex says what an app shows only when it next
+// sizes a block, so a watcher that has just started or reconnected can't
+// tell whether a tab is on screen.
+func (w *world) knowsWhatAppsShow() bool {
+	for clientID := range w.apps {
+		if !w.heardFrom(clientID) {
+			return false
+		}
+	}
+	return true
+}
+
+func (w *world) heardFrom(clientID string) bool {
+	return w.heard[clientID]
 }
 
 func (w *world) isApp(clientID string) bool {

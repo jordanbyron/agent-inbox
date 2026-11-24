@@ -102,7 +102,14 @@ func (w *watcher) handle(ctx context.Context, event rex.Event) bool {
 		if w.world.block(event.SessionID, event.BlockID) == nil {
 			w.rescan(ctx, event.SessionID)
 		}
-		return w.world.sized(event.SessionID, event.BlockID, event.ClientID)
+		first := !w.world.heardFrom(event.ClientID)
+		if !w.world.sized(event.SessionID, event.BlockID, event.ClientID) {
+			return false
+		}
+		if first {
+			w.log.Info("heard which tab a Rex app shows", "app", event.ClientID)
+		}
+		return true
 	case rex.EventSessionDestroyed:
 		w.world.removeSession(event.SessionID)
 	case rex.EventSessionCreated, rex.EventBlockCreated, rex.EventWindowCreated, rex.EventWindowLabelChanged:

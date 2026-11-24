@@ -382,3 +382,6 @@ func fileInfo(t *testing.T, path string) os.FileInfo {
 	require.NoError(t, err)
 	return info
 }
+
+// heardApp is what the watcher logs once it knows which tab an app shows.
+const heardApp = "heard which tab a Rex app shows"

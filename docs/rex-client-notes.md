@@ -152,7 +152,16 @@ Checked by switching the app between two throwaway sessions with
   app's `client_id` and the `action`, but not its `args`, so it can't say
   which session was selected.
 
+- A second window of the app (`client.window.new`) sizes its blocks under
+  the same client id and pid as the first, and the payload carries only
+  `columns`, `rows`, the cell size, `owner` and `principal`. Nothing says
+  which of the app's windows sized a block. Checked on 2026-11-23.
+
 The watcher therefore counts a tab as seen while it is the last one an app
 sized a block in, and with no `size_changed` from an app yet, nothing is
 seen. An app can have several windows of its own, each showing a tab; only
-the last one it sized counts, which errs toward Needs you.
+the last one it sized counts, which errs toward Needs you. Auto-settle
+waits until every connected app has sized a block since the watcher's
+last scan, at startup or after the stream reconnects, since until then a
+tab on screen looks like one that isn't. That doesn't cover a tab in an
+app's other window, which Rex gives no way to tell apart.

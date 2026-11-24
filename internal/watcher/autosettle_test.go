@@ -14,7 +14,8 @@ import (
 )
 
 // mergedAgent starts a watcher on one launched agent, idle in its own tab
-// with pull request 912 already found and open, and the tab not shown.
+// with pull request 912 already found and open, and the app showing
+// another tab.
 func mergedAgent(t *testing.T) (h *harness, app, work, editor, tab string) {
 	h = newHarness(t)
 	work = h.rex.AddSession("work")
@@ -28,6 +29,8 @@ func mergedAgent(t *testing.T) (h *harness, app, work, editor, tab string) {
 		st.PullRequests["a1"] = []state.PullRequest{{URL: prURL(912), Number: 912, Source: state.SourceCapture}}
 	})
 	h.start()
+	require.NoError(t, h.rex.Display(app, work, editor))
+	h.waitLog(heardApp)
 	h.clock.Advance(time.Second)
 	h.waitRow("a1", headline(state.PRStateOpen))
 	h.gh.set(912, ghPR{state: "MERGED", closedAt: t0}, "")
@@ -111,6 +114,7 @@ func TestAutoSettleHeldWhileAnyRecordWorksOrFails(t *testing.T) {
 			})
 			h.start()
 			require.NoError(t, h.rex.Display(app, work, editor))
+			h.waitLog(heardApp)
 			h.clock.Advance(time.Second)
 			h.waitRow("a1", headline(state.PRStateOpen))
 
@@ -152,4 +156,56 @@ func TestAutoSettleClosesOnlyTheAgentInASplitTab(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, view.Windows, 2)
 	require.Equal(t, shell, view.Windows[1].Blocks[0].ID, "the shell beside the agent stays")
+}
+
+// Rex says which tab an app shows only when the app next sizes a block,
+// so a watcher that has just started or reconnected doesn't know yet.
+func TestAutoSettleWaitsToHearWhatEachAppShows(t *testing.T) {
+	cases := []struct {
+		name   string
+		before func(h *harness, app, work, editor string)
+	}{
+		{name: "a watcher just started"},
+		{
+			name: "a watcher that lost its event stream",
+			before: func(h *harness, app, work, editor string) {
+				require.NoError(h.t, h.rex.Display(app, work, editor))
+				h.rex.GoAway()
+				h.waitLog("reconnecting")
+				h.clock.Advance(time.Second)
+				h.waitLog("reconnected")
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h := newHarness(t)
+			work := h.rex.AddSession("work")
+			editor, _ := h.tab(work, "")
+			tab, block := h.tab(work, "agent-inbox:a1")
+			app := h.rex.AddApp("Rex", work)
+			require.NoError(t, h.rex.SetStatus(work, block, idle))
+			h.gh.set(912, ghPR{state: "MERGED", closedAt: t0}, "")
+			pr := state.PullRequest{URL: prURL(912), Number: 912, State: state.PRStateOpen, Source: state.SourceCapture}
+			h.edit(func(st *state.State) {
+				st.Records["a1"] = launched(work, "/r/app")
+				st.PullRequests["a1"] = []state.PullRequest{pr}
+			})
+			h.start()
+			if c.before != nil {
+				c.before(h, app, work, editor)
+			}
+
+			h.edit(func(st *state.State) {
+				pr.State, pr.ResolvedAt = state.PRStateMerged, t0
+				st.PullRequests["a1"] = []state.PullRequest{pr}
+			})
+			h.waitRow("a1", headline(state.PRStateMerged))
+			require.Empty(t, h.rex.ClosedWindows(), "the app may be showing the tab")
+
+			require.NoError(t, h.rex.Display(app, work, editor))
+			h.waitSection("a1", settled)
+			require.Equal(t, []string{tab}, h.rex.ClosedWindows())
+		})
+	}
 }
