@@ -24,6 +24,7 @@ type rexAPI interface {
 	OpenLayer(ctx context.Context, opts rex.LayerOptions) (rex.Layer, error)
 	CloseBlock(ctx context.Context, sessionID, blockID string) error
 	CloseWindow(ctx context.Context, sessionID, windowID string) error
+	FocusBlock(ctx context.Context, sessionID, blockID string) error
 	Show(ctx context.Context, sessionID, blockID string) error
 	Capture(ctx context.Context, sessionID, blockID string) (string, error)
 	Events(ctx context.Context) (<-chan rex.Event, <-chan error)

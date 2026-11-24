@@ -63,3 +63,13 @@ func TestModalIsAFlagOfTheListAndTheRoot(t *testing.T) {
 		})
 	}
 }
+
+func TestHoldFocusIsHidden(t *testing.T) {
+	var out bytes.Buffer
+	cmd := cli.New()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"--help"})
+
+	require.NoError(t, cmd.Execute())
+	require.NotContains(t, out.String(), "hold-focus")
+}

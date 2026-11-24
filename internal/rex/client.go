@@ -73,6 +73,7 @@ func (c *Client) View(ctx context.Context, sessionID string) (View, error) {
 			Label          string `json:"label"`
 			FocusedBlockID string `json:"focused_block_id"`
 			Layers         []struct {
+				State  string `json:"state"`
 				Blocks []struct {
 					ID    string `json:"block_id"`
 					Label string `json:"label"`
@@ -93,8 +94,14 @@ func (c *Client) View(ctx context.Context, sessionID string) (View, error) {
 	for _, w := range out.Windows {
 		window := Window{ID: w.ID, Label: w.Label, FocusedBlockID: w.FocusedBlockID}
 		for _, layer := range w.Layers {
+			minimized := layer.State == "minimized"
 			for _, b := range layer.Blocks {
-				window.Blocks = append(window.Blocks, Block(b))
+				window.Blocks = append(window.Blocks, Block{
+					ID:        b.ID,
+					Label:     b.Label,
+					Owner:     b.Owner,
+					Minimized: minimized,
+				})
 			}
 		}
 		view.Windows = append(view.Windows, window)
@@ -299,6 +306,11 @@ func (c *Client) CloseWindow(ctx context.Context, sessionID, windowID string) er
 	return c.call(ctx, sessionID, "session.close_window", map[string]string{"window_id": windowID}, nil)
 }
 
+// FocusBlock focuses a block on the server and makes its window active.
+func (c *Client) FocusBlock(ctx context.Context, sessionID, blockID string) error {
+	return c.call(ctx, sessionID, "session.focus_block", map[string]string{"block_id": blockID}, nil)
+}
+
 // Show focuses a block on the server and asks every app attached to its
 // session to select its window. The server's focus alone doesn't move an
 // app. An app with Remote Control off refuses with ErrRemoteControlOff.
@@ -315,7 +327,7 @@ func (c *Client) Show(ctx context.Context, sessionID, blockID string) error {
 	if windowID == "" {
 		return fmt.Errorf("showing block %s: it is not in a window", blockID)
 	}
-	if err := c.call(ctx, sessionID, "session.focus_block", map[string]string{"block_id": blockID}, nil); err != nil {
+	if err := c.FocusBlock(ctx, sessionID, blockID); err != nil {
 		return err
 	}
 	apps, err := c.Apps(ctx)

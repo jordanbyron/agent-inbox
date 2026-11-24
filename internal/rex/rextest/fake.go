@@ -34,6 +34,7 @@ type Fake struct {
 	started       []rex.StartOptions
 	closedBlocks  []string
 	closedWindows []string
+	focusedBlocks []string
 	shown         []string
 	layers        []rex.LayerOptions
 	parked        []rex.ParkOptions
@@ -49,16 +50,18 @@ type session struct {
 }
 
 type window struct {
-	id     string
-	label  string
-	blocks []*block
+	id      string
+	label   string
+	focused string
+	blocks  []*block
 }
 
 type block struct {
-	id      string
-	label   string
-	dir     string
-	records []rex.StatusRecord
+	id        string
+	label     string
+	dir       string
+	minimized bool
+	records   []rex.StatusRecord
 }
 
 // New returns an empty Fake whose server has the given identity.
@@ -160,6 +163,33 @@ func (f *Fake) SetActiveWindow(sessionID, windowID string) error {
 		return err
 	}
 	f.activate(s, windowID)
+	return nil
+}
+
+// SetFocusedBlock moves a window's focus to blockID, as Rex.app would,
+// without counting as a FocusBlock request.
+func (f *Fake) SetFocusedBlock(sessionID, blockID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, w, _, err := f.block(sessionID, blockID)
+	if err != nil {
+		return err
+	}
+	w.focused = blockID
+	f.viewChanged(s)
+	return nil
+}
+
+// SetMinimized marks a block's floating layer minimized or normal.
+func (f *Fake) SetMinimized(sessionID, blockID string, minimized bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, _, b, err := f.block(sessionID, blockID)
+	if err != nil {
+		return err
+	}
+	b.minimized = minimized
+	f.viewChanged(s)
 	return nil
 }
 
@@ -285,6 +315,13 @@ func (f *Fake) Shown() []string {
 	return slices.Clone(f.shown)
 }
 
+// FocusedBlocks returns the blocks FocusBlock was asked to focus, in order.
+func (f *Fake) FocusedBlocks() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.focusedBlocks)
+}
+
 // Server returns the identity New was given.
 func (f *Fake) Server(ctx context.Context) (rex.Server, error) {
 	if err := f.reachable(ctx); err != nil {
@@ -322,9 +359,11 @@ func (f *Fake) View(ctx context.Context, sessionID string) (rex.View, error) {
 	for _, w := range s.windows {
 		window := rex.Window{ID: w.id, Label: w.label}
 		for _, b := range w.blocks {
-			window.Blocks = append(window.Blocks, rex.Block{ID: b.id, Label: b.label})
+			window.Blocks = append(window.Blocks, rex.Block{ID: b.id, Label: b.label, Minimized: b.minimized})
 		}
-		if len(window.Blocks) > 0 {
+		if w.focused != "" {
+			window.FocusedBlockID = w.focused
+		} else if len(window.Blocks) > 0 {
 			window.FocusedBlockID = window.Blocks[0].ID
 		}
 		view.Windows = append(view.Windows, window)
@@ -493,6 +532,27 @@ func (f *Fake) CloseWindow(ctx context.Context, sessionID, windowID string) erro
 	return nil
 }
 
+// FocusBlock records the request, focuses the block, and makes its window active.
+func (f *Fake) FocusBlock(ctx context.Context, sessionID, blockID string) error {
+	if err := f.reachable(ctx); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, w, _, err := f.block(sessionID, blockID)
+	if err != nil {
+		return err
+	}
+	f.focusedBlocks = append(f.focusedBlocks, blockID)
+	changed := w.focused != blockID
+	w.focused = blockID
+	f.activate(s, w.id)
+	if changed {
+		f.viewChanged(s)
+	}
+	return nil
+}
+
 // Show records the request and makes the block's window active, and each
 // app attached to the session displays it. With Remote Control off and an
 // app attached, it fails as Rex does instead.
@@ -629,6 +689,9 @@ func (f *Fake) addBlock(s *session, w *window, label, dir string) *block {
 
 func (f *Fake) removeBlock(s *session, w *window, b *block) {
 	w.blocks = slices.DeleteFunc(w.blocks, func(other *block) bool { return other == b })
+	if w.focused == b.id {
+		w.focused = ""
+	}
 	f.emit(rex.Event{Type: rex.EventBlockClosed, SessionID: s.id, BlockID: b.id})
 	if len(w.blocks) == 0 {
 		f.removeWindow(s, w)

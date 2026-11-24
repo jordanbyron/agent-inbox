@@ -51,13 +51,21 @@ local function close_if_open(ctx, window, label)
   return false
 end
 
+-- Rex.app returns focus to the block behind a palette once the palette closes,
+-- after this action has already focused the new block; init.lua has no timer.
+local function hold_focus(ctx, block_id)
+  if ctx.session_id == nil or ctx.block_id == nil or block_id == nil or block_id == ctx.block_id then return end
+  rex.exec.start({ agent_inbox, "hold-focus", ctx.session_id, ctx.block_id, block_id }, { detach = true })
+end
+
 local function new_agent(ctx)
-  check(rex.session.new_layer{
+  local created = check(rex.session.new_layer{
     window_id = this_window(ctx).window_id,
     bounds = { 0.1, 0.1, 0.8, 0.8 },
     layout = running({ agent_inbox, "new" }),
     focus = true,
   })
+  hold_focus(ctx, created.block_ids and created.block_ids[1])
 end
 
 local function layer_holding(window, label)
@@ -85,13 +93,20 @@ local function toggle_modal(ctx)
     check(rex.call("block.close", { session_id = ctx.session_id, block_id = block.block_id }))
     return
   end
-  if layer ~= nil then return bring_forward(ctx, layer) end
-  check(rex.session.new_layer{
-    window_id = window.window_id,
-    bounds = { 0.1, 0.1, 0.8, 0.8 },
-    layout = running({ agent_inbox, "list", "--modal" }, modal_label),
-    focus = true,
-  })
+  local target
+  if layer ~= nil then
+    bring_forward(ctx, layer)
+    target = block.block_id
+  else
+    local created = check(rex.session.new_layer{
+      window_id = window.window_id,
+      bounds = { 0.1, 0.1, 0.8, 0.8 },
+      layout = running({ agent_inbox, "list", "--modal" }, modal_label),
+      focus = true,
+    })
+    target = created.block_ids and created.block_ids[1]
+  end
+  hold_focus(ctx, target)
 end
 
 local function toggle_beside(ctx)
@@ -102,7 +117,7 @@ local function toggle_beside(ctx)
     if layer.kind == "tiled" then tiled = layer end
   end
   local whole = tiled.layout.split and tiled.layout.split.split_id or tiled.layout.block_id
-  check(rex.session.new_split{
+  local created = check(rex.session.new_split{
     anchor_id = whole,
     direction = "horizontal",
     side = "before",
@@ -110,6 +125,7 @@ local function toggle_beside(ctx)
     layout = running({ agent_inbox }, beside_label),
     focus = true,
   })
+  hold_focus(ctx, created.block_ids and created.block_ids[1])
 end
 
 local function said(output)

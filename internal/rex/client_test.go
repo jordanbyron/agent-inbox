@@ -129,6 +129,21 @@ func TestView(t *testing.T) {
 	require.Equal(t, []string{"api call -s " + testSession + " session.view"}, calls())
 }
 
+func TestViewMarksMinimizedLayerBlocks(t *testing.T) {
+	body := `{"revision":1,"session_id":"` + testSession + `","active_window_id":"` + testWindow + `","windows":[` +
+		`{"window_id":"` + testWindow + `","focused_block_id":"block:1","layers":[` +
+		`{"layer_id":"layer:1","kind":"tiled","blocks":[{"block_id":"block:1"}]},` +
+		`{"layer_id":"layer:2","kind":"floating","state":"minimized","blocks":[{"block_id":"block:2"}]}]}]}`
+	client, _ := fakeRex(t, reply{match: "session.view", exec: "printf '%s' '" + body + "'"})
+
+	view, err := client.View(t.Context(), testSession)
+	require.NoError(t, err)
+	require.Equal(t, []rex.Block{
+		{ID: "block:1"},
+		{ID: "block:2", Minimized: true},
+	}, view.Windows[0].Blocks)
+}
+
 func TestStatus(t *testing.T) {
 	client, calls := fakeRex(t, reply{match: "block.method", file: "program_status.json"})
 
@@ -307,6 +322,15 @@ func TestClose(t *testing.T) {
 	require.Equal(t, []string{
 		"api call -s " + testSession + ` block.close {"block_id":"` + testBlock + `"}`,
 		"api call -s " + testSession + ` session.close_window {"window_id":"` + testWindow + `"}`,
+	}, calls())
+}
+
+func TestFocusBlock(t *testing.T) {
+	client, calls := fakeRex(t, reply{match: "session.focus_block"})
+
+	require.NoError(t, client.FocusBlock(t.Context(), testSession, testBlock))
+	require.Equal(t, []string{
+		"api call -s " + testSession + ` session.focus_block {"block_id":"` + testBlock + `"}`,
 	}, calls())
 }
 

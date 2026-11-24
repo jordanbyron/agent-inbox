@@ -209,3 +209,22 @@ Claude Code 2.1.331, Codex 0.165.0 and agy 1.5.14, in a throwaway session.
   since that needs `rex config reload`. `client.keymap` reports a key bound
   to a function as `client.key.forward`, so the app sends it through
   `client.key`, the path measured above.
+
+## Focus after a palette action
+
+Observed on 2026-11-24 with Rex Beta 0.1.0 (2061) and server API revision 18,
+with Focus Follows Mouse off.
+
+- Opening a floating layer from a key binding (`left` arrow calling
+  `session.new_layer` with `focus = true`) leaves keyboard focus in the new
+  modal.
+- Opening the same layer from `rex.ui.pick` focuses the new block on the
+  server right away, then 164 to 212 ms later Rex.app sends a view change
+  that returns focus to the block the palette opened over. Queuing
+  `session.select` with `rex.client.queue` did not prevent it.
+- Calling `session.focus_block` on the new block after that view change
+  moves Rex.app's keyboard focus back into the modal and sticks.
+- `init.lua` has no timers (`rex.after`, `rex.every`, `rex.sleep` and
+  `rex.wait` are nil, and `rex.on` warns without registering), so the
+  snippet starts `agent-inbox hold-focus` with `rex.exec.start(..., { detach = true })`
+  to watch for that bounce for up to one second and refocus the target once.

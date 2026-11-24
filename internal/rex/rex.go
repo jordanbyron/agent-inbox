@@ -52,9 +52,10 @@ type Window struct {
 
 // Block is one terminal in a window.
 type Block struct {
-	ID    string
-	Label string
-	Owner string
+	ID        string
+	Label     string
+	Owner     string
+	Minimized bool
 }
 
 // StatusRecord is one program status record a block holds, as reported

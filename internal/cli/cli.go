@@ -20,7 +20,7 @@ func New() *cobra.Command {
 	root.Flags().BoolVar(&modal, "modal", false, modalUsage)
 	root.AddCommand(newVersionCommand(), newListCommand(), newLsCommand(), newWatchCommand())
 	root.AddCommand(newFormCommand(openInbox))
-	root.AddCommand(newReapCommand(openInbox), newLuaCommand())
+	root.AddCommand(newReapCommand(openInbox), newLuaCommand(), newHoldFocusCommand())
 	root.AddCommand(verbCommands(openInbox)...)
 	return root
 }
