@@ -20,7 +20,7 @@ func TestFlagsPrefillTheForm(t *testing.T) {
 	dir := t.TempDir()
 
 	opts, err := cli.FormOptions(t.Context(), f.inbox, verbs.StartRequest{
-		Harness: "codex", Model: "gpt-5.6-terra", Permissions: "read-only",
+		Harness: "codex", Model: "gpt-5.6-terra", Permissions: "danger-full-access",
 		Dir: dir, Session: "other", Worktree: false,
 	}, io.Discard)
 
@@ -34,7 +34,7 @@ func TestFlagsPrefillTheForm(t *testing.T) {
 	require.Equal(t, "codex", codex.Name, "the harness given comes first, where the form starts")
 	require.Equal(t, "gpt-5.6-terra", codex.Choices.Model[0])
 	require.Equal(t, "default", codex.Choices.Effort[0])
-	require.Equal(t, "read-only", codex.Choices.Permissions[0])
+	require.Equal(t, "danger-full-access", codex.Choices.Permissions[0])
 	require.Equal(t, "default", recipe.Builtins()[1].Choices.Model[0], "the built-ins are left as they were")
 	require.Len(t, opts.Recipes, len(recipe.Builtins()))
 }
@@ -52,14 +52,14 @@ func TestTheFormStartsInThePanesSession(t *testing.T) {
 func TestTheFormsChoicesAreWhatStarts(t *testing.T) {
 	result := form.Result{
 		Prompt: "fix it", Harness: "codex", Dir: "/r/app", Session: "session:1",
-		Model: "gpt-6-luna", Effort: "high", Permissions: "read-only", Worktree: true,
+		Model: "gpt-6-luna", Effort: "high", Permissions: "danger-full-access", Worktree: true,
 	}
 
 	req := cli.FromForm(result, verbs.StartRequest{Name: "from-flag", Show: true, Harness: "claude"})
 
 	require.Equal(t, verbs.StartRequest{
 		Prompt: "fix it", Harness: "codex", Name: "from-flag", Dir: "/r/app", Session: "session:1",
-		Model: "gpt-6-luna", Effort: "high", Permissions: "read-only", Worktree: true, Show: true,
+		Model: "gpt-6-luna", Effort: "high", Permissions: "danger-full-access", Worktree: true, Show: true,
 	}, req)
 
 	result.Name, result.ShowTab = "typed", true

@@ -30,6 +30,11 @@ type Recipe struct {
 	Commands []string `toml:"commands"`
 	// Choices are what the form offers for Model, Effort and Permissions.
 	Choices Choices `toml:"choices"`
+	// PermissionArgs maps a permissions choice to the arguments it stands
+	// for, for a harness that needs more than one flag per choice. When it
+	// is set they take the place of Start's {permissions} argument and the
+	// flag before it; a choice it doesn't list adds nothing.
+	PermissionArgs map[string][]string `toml:"permission_args"`
 	// Sessions learns the session id of a harness that cannot be given one
 	// at start. It is nil for a recipe from the config file.
 	Sessions SessionFinder `toml:"-"`
@@ -55,7 +60,23 @@ type Values struct {
 
 // StartArgs returns the argv that starts an agent.
 func (r Recipe) StartArgs(v Values) []string {
-	return render(r.Start, v)
+	return render(r.withPermissions(r.Start, v.Permissions), v)
+}
+
+func (r Recipe) withPermissions(template []string, choice string) []string {
+	i := slices.IndexFunc(template, func(arg string) bool { return strings.Contains(arg, "{permissions}") })
+	if r.PermissionArgs == nil || i < 0 {
+		return template
+	}
+	from := i
+	if i > 0 && isFlag(template[i-1]) && !strings.HasPrefix(template[i], "-") {
+		from = i - 1
+	}
+	return slices.Concat(template[:from], r.PermissionArgs[choice], template[i+1:])
+}
+
+func isFlag(arg string) bool {
+	return strings.HasPrefix(arg, "-") && !placeholder.MatchString(arg)
 }
 
 // ResumeArgs returns the argv that resumes an agent, falling back to
@@ -119,7 +140,7 @@ func render(template []string, v Values) []string {
 			continue
 		}
 		out = append(out, value)
-		lastIsFlag = strings.HasPrefix(arg, "-") && !placeholder.MatchString(arg)
+		lastIsFlag = isFlag(arg)
 	}
 	return out
 }
@@ -156,6 +177,13 @@ func (r Recipe) check() error {
 	}
 	if err := checkPlaceholders(r.Mention, []string{"{path}"}); err != nil {
 		return fmt.Errorf("recipes.%s.mention: %w", r.Name, err)
+	}
+	for choice, args := range r.PermissionArgs {
+		for _, arg := range args {
+			if err := checkPlaceholders(arg, nil); err != nil {
+				return fmt.Errorf("recipes.%s.permission_args.%s: %w", r.Name, choice, err)
+			}
+		}
 	}
 	return nil
 }

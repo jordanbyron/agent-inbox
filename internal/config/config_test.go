@@ -96,6 +96,10 @@ commands = ["~/.aider/commands"]
 
 [recipes.aider.choices]
 model = ["default", "sonnet"]
+permissions = ["default", "yolo"]
+
+[recipes.aider.permission_args]
+yolo = ["--yes-always", "--no-git"]
 `)
 
 	cfg, err := config.Load(path)
@@ -107,16 +111,18 @@ model = ["default", "sonnet"]
 	require.Equal(t, []string{"codex", "{prompt}"}, codex.Start)
 	require.Nil(t, codex.Sessions)
 	require.Nil(t, codex.ResumeLatest)
+	require.Nil(t, codex.PermissionArgs, "a replaced built-in keeps none of its own")
 	aider, ok := cfg.Recipes.Named("aider")
 	require.True(t, ok)
 	require.Equal(t, recipe.Recipe{
-		Name:     "aider",
-		App:      "aider",
-		Start:    []string{"aider", "--model", "{model}"},
-		Resume:   []string{"aider", "--restore-chat-history"},
-		Mention:  "/add {path}",
-		Commands: []string{"~/.aider/commands"},
-		Choices:  recipe.Choices{Model: []string{"default", "sonnet"}},
+		Name:           "aider",
+		App:            "aider",
+		Start:          []string{"aider", "--model", "{model}"},
+		Resume:         []string{"aider", "--restore-chat-history"},
+		Mention:        "/add {path}",
+		Commands:       []string{"~/.aider/commands"},
+		Choices:        recipe.Choices{Model: []string{"default", "sonnet"}, Permissions: []string{"default", "yolo"}},
+		PermissionArgs: map[string][]string{"yolo": {"--yes-always", "--no-git"}},
 	}, aider)
 }
 

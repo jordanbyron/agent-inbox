@@ -349,7 +349,10 @@ effort      = ["default", "low", "medium", "high", "xhigh", "max"]
 ```
 
 A flag whose value is `default` is left out along with its value. A recipe
-in the config file with a built-in's name replaces it.
+in the config file with a built-in's name replaces it. A choice that needs
+several flags, as Codex's permissions set both sandbox and approval, is
+spelled out under `[recipes.NAME.permission_args]`, a list of arguments
+per choice that takes the place of the `{permissions}` flag pair.
 
 The rest of the config:
 

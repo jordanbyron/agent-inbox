@@ -98,8 +98,18 @@ func TestBuiltinStartArgs(t *testing.T) {
 			values: recipe.Values{Name: "n", Model: "gpt-6-luna", Effort: "xhigh", Permissions: "workspace-write", Prompt: "fix it"},
 			want: []string{
 				"codex", "--model", "gpt-6-luna", "-c", "model_reasoning_effort=xhigh",
-				"--sandbox", "workspace-write", "--", "fix it",
+				"--sandbox", "workspace-write", "--ask-for-approval", "on-request", "--", "fix it",
 			},
+		},
+		{
+			recipe: "codex",
+			values: recipe.Values{Permissions: "danger-full-access", Prompt: "fix it"},
+			want:   []string{"codex", "--sandbox", "danger-full-access", "--ask-for-approval", "never", "--", "fix it"},
+		},
+		{
+			recipe: "codex",
+			values: recipe.Values{Permissions: "read-only", Prompt: "fix it"},
+			want:   []string{"codex", "--sandbox", "read-only", "--ask-for-approval", "on-request", "--", "fix it"},
 		},
 		{
 			recipe: "codex",
@@ -118,6 +128,49 @@ func TestBuiltinStartArgs(t *testing.T) {
 			require.True(t, ok)
 
 			require.Equal(t, c.want, r.StartArgs(c.values))
+		})
+	}
+}
+
+func TestPermissionArgs(t *testing.T) {
+	expands := map[string][]string{"full": {"--sandbox", "open", "--approve", "never"}}
+	cases := []struct {
+		name     string
+		template []string
+		args     map[string][]string
+		choice   string
+		want     []string
+	}{
+		{
+			name:     "a choice stands for its arguments, in place of the flag pair",
+			template: []string{"x", "--mode", "{permissions}", "--", "{prompt}"},
+			args:     expands, choice: "full",
+			want: []string{"x", "--sandbox", "open", "--approve", "never", "--", "p"},
+		},
+		{
+			name:     "a choice it doesn't list adds nothing",
+			template: []string{"x", "--mode", "{permissions}", "--", "{prompt}"},
+			args:     expands, choice: "default",
+			want: []string{"x", "--", "p"},
+		},
+		{
+			name:     "a flag that carries the choice itself is replaced alone",
+			template: []string{"x", "--search", "--mode={permissions}", "--", "{prompt}"},
+			args:     expands, choice: "full",
+			want: []string{"x", "--search", "--sandbox", "open", "--approve", "never", "--", "p"},
+		},
+		{
+			name:     "without a table the flag pair is filled as before",
+			template: []string{"x", "--mode", "{permissions}", "--", "{prompt}"},
+			choice:   "full",
+			want:     []string{"x", "--mode", "full", "--", "p"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := recipe.Recipe{Start: c.template, PermissionArgs: c.args}
+
+			require.Equal(t, c.want, r.StartArgs(recipe.Values{Permissions: c.choice, Prompt: "p"}))
 		})
 	}
 }
@@ -213,6 +266,14 @@ func TestWithBuiltinsChecksPlaceholders(t *testing.T) {
 			name:   "in mention",
 			recipe: recipe.Recipe{App: "x", Start: []string{"x"}, Resume: []string{"x"}, Mention: "@{name}"},
 			want:   "recipes.x.mention: unknown placeholder {name}",
+		},
+		{
+			name: "in permission_args",
+			recipe: recipe.Recipe{
+				App: "x", Start: []string{"x"}, Resume: []string{"x"},
+				PermissionArgs: map[string][]string{"full": {"--dir", "{dir}"}},
+			},
+			want: "recipes.x.permission_args.full: unknown placeholder {dir}",
 		},
 		{
 			name:   "no start",
