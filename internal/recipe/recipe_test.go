@@ -161,7 +161,7 @@ func TestBuiltinsSessionFinders(t *testing.T) {
 
 	require.Nil(t, claude.Sessions)
 	require.Equal(t, recipe.CodexSessions{}, codex.Sessions)
-	require.Equal(t, recipe.AgySessions{SQLite: "sqlite3"}, agy.Sessions)
+	require.Equal(t, recipe.AgySessions{}, agy.Sessions)
 }
 
 func TestForApp(t *testing.T) {

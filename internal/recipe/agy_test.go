@@ -1,9 +1,7 @@
 package recipe_test
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,60 +12,68 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/recipe"
 )
 
+// agyLog is a run's log: a fixture under testdata/agy, made from agy
+// 1.5.14's own logs, with the workspace filled in.
+type agyLog struct {
+	fixture   string
+	began     time.Time
+	workspace string
+}
+
 func TestAgySessions(t *testing.T) {
-	if _, err := exec.LookPath("sqlite3"); err != nil {
-		t.Skip("needs the sqlite3 program")
-	}
-	began := time.Date(2026, 11, 24, 1, 0, 0, 0, time.UTC)
+	began := time.Date(2026, 11, 23, 21, 47, 15, 500_000_000, time.Local)
 	dir := t.TempDir()
 	other := t.TempDir()
 	cases := []struct {
-		name          string
-		conversations []conversation
-		want          string
+		name string
+		logs []agyLog
+		want string
 	}{
-		{name: "an empty table", want: ""},
+		{name: "no logs", want: ""},
 		{
-			name: "the one in the agent's directory",
-			conversations: []conversation{
-				{id: "mine", workspaces: []string{dir}, modified: began.Add(time.Second)},
-				{id: "elsewhere", workspaces: []string{other}, modified: began.Add(time.Minute)},
-			},
-			want: "mine",
+			name: "the run in the agent's directory",
+			logs: []agyLog{{"interactive.log", began, dir}},
+			want: "56fc796c-36fc-4ce8-a6ea-d2b478877c19",
 		},
 		{
-			name: "the most recently modified",
-			conversations: []conversation{
-				{id: "first", workspaces: []string{dir}, modified: began.Add(time.Minute)},
-				{id: "second", workspaces: []string{other, dir}, modified: began.Add(time.Hour)},
-			},
-			want: "second",
+			name: "one in print mode",
+			logs: []agyLog{{"print.log", began.Add(time.Second), dir}},
+			want: "8137cad9-9705-4bcd-b85c-d09597117b43",
 		},
 		{
-			name:          "not one last modified before the agent began",
-			conversations: []conversation{{id: "old", workspaces: []string{dir}, modified: began.Add(-time.Second)}},
-			want:          "",
+			name: "the newest of several",
+			logs: []agyLog{{"interactive.log", began, dir}, {"print.log", began.Add(time.Minute), dir}},
+			want: "8137cad9-9705-4bcd-b85c-d09597117b43",
 		},
 		{
-			name:          "not one with no workspace",
-			conversations: []conversation{{id: "none", modified: began.Add(time.Second)}},
-			want:          "",
+			name: "not a run elsewhere",
+			logs: []agyLog{{"interactive.log", began, dir}, {"print.log", began.Add(time.Minute), other}},
+			want: "56fc796c-36fc-4ce8-a6ea-d2b478877c19",
 		},
 		{
-			name: "not a sub-agent's",
-			conversations: []conversation{
-				{id: "root", workspaces: []string{dir}, modified: began.Add(time.Second)},
-				{id: "child", workspaces: []string{dir}, modified: began.Add(time.Minute), parent: "root"},
-			},
-			want: "root",
+			name: "not one that created no conversation",
+			logs: []agyLog{{"interactive.log", began, dir}, {"no_conversation.log", began.Add(time.Minute), dir}},
+			want: "56fc796c-36fc-4ce8-a6ea-d2b478877c19",
+		},
+		{
+			name: "not one from before the agent began",
+			logs: []agyLog{{"interactive.log", began.Add(-time.Second), dir}},
+			want: "",
+		},
+		{
+			name: "the directory compared with symlinks resolved",
+			logs: []agyLog{{"interactive.log", began, resolved(t, dir)}},
+			want: "56fc796c-36fc-4ce8-a6ea-d2b478877c19",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			home := t.TempDir()
-			writeAgyDB(t, home, c.conversations)
+			for _, l := range c.logs {
+				writeAgyLog(t, home, l)
+			}
 
-			id, ok, err := recipe.AgySessions{SQLite: "sqlite3"}.FindSessionID(t.Context(), recipe.SessionQuery{Home: home, Dir: dir, Began: began})
+			id, ok, err := recipe.AgySessions{}.FindSessionID(t.Context(), recipe.SessionQuery{Home: home, Dir: dir, Began: began})
 
 			require.NoError(t, err)
 			require.Equal(t, c.want != "", ok)
@@ -76,63 +82,35 @@ func TestAgySessions(t *testing.T) {
 	}
 }
 
-func TestAgySessionsWithoutSQLiteOrDatabase(t *testing.T) {
-	if _, err := exec.LookPath("sqlite3"); err != nil {
-		t.Skip("needs the sqlite3 program")
-	}
-	dir := t.TempDir()
+func TestAgySessionsIgnoresOtherFiles(t *testing.T) {
 	home := t.TempDir()
-	writeAgyDB(t, home, []conversation{{id: "mine", workspaces: []string{dir}, modified: time.Now()}})
-	cases := []struct {
-		name   string
-		sqlite string
-		home   string
-	}{
-		{name: "no sqlite3", sqlite: filepath.Join(t.TempDir(), "sqlite3"), home: home},
-		{name: "no database", sqlite: "sqlite3", home: t.TempDir()},
+	dir := t.TempDir()
+	logs := filepath.Join(home, ".gemini", "antigravity-cli", "log")
+	require.NoError(t, os.MkdirAll(logs, 0o700))
+	for _, name := range []string{"acp-server-20261123_214715-67570.log", "cli-latest.log"} {
+		require.NoError(t, os.WriteFile(filepath.Join(logs, name), []byte("workspaceDirs=["+dir+"] \n"), 0o600))
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			q := recipe.SessionQuery{Home: c.home, Dir: dir, Began: time.Now().Add(-time.Hour)}
 
-			id, ok, err := recipe.AgySessions{SQLite: c.sqlite}.FindSessionID(t.Context(), q)
+	_, ok, err := recipe.AgySessions{}.FindSessionID(t.Context(), recipe.SessionQuery{Home: home, Dir: dir, Began: time.Time{}})
 
-			require.NoError(t, err)
-			require.False(t, ok)
-			require.Empty(t, id)
-		})
-	}
+	require.NoError(t, err)
+	require.False(t, ok)
 }
 
-type conversation struct {
-	id         string
-	workspaces []string
-	modified   time.Time
-	parent     string
-}
-
-// writeAgyDB makes the database with agy's own schema for the columns read,
-// and its values as agy writes them: a JSON array of file:// URIs, or "".
-func writeAgyDB(t *testing.T, home string, conversations []conversation) {
+func resolved(t *testing.T, dir string) string {
 	t.Helper()
-	dir := filepath.Join(home, ".gemini", "antigravity-cli")
+	path, err := filepath.EvalSymlinks(dir)
+	require.NoError(t, err)
+	return path
+}
+
+func writeAgyLog(t *testing.T, home string, l agyLog) {
+	t.Helper()
+	text, err := os.ReadFile(filepath.Join("testdata", "agy", l.fixture))
+	require.NoError(t, err)
+	dir := filepath.Join(home, ".gemini", "antigravity-cli", "log")
 	require.NoError(t, os.MkdirAll(dir, 0o700))
-	sql := []string{"CREATE TABLE `conversation_summaries` (`conversation_id` text, `last_modified_time` datetime NOT NULL, " +
-		"`workspace_uris` text NOT NULL, `parent_conversation_id` text NOT NULL DEFAULT \"\", PRIMARY KEY (`conversation_id`));"}
-	for _, c := range conversations {
-		uris := ""
-		if len(c.workspaces) > 0 {
-			quoted := make([]string, len(c.workspaces))
-			for i, w := range c.workspaces {
-				quoted[i] = fmt.Sprintf("%q", "file://"+w)
-			}
-			uris = "[" + strings.Join(quoted, ",") + "]"
-		}
-		sql = append(sql, fmt.Sprintf("INSERT INTO conversation_summaries VALUES ('%s', '%s', '%s', '%s');",
-			c.id, c.modified.UTC().Format("2006-01-02 15:04:05.000000-07:00"), uris, c.parent))
-	}
-	cmd := exec.CommandContext(t.Context(), "sqlite3", filepath.Join(dir, "conversation_summaries.db"))
-	cmd.Stdin = strings.NewReader(strings.Join(sql, "\n"))
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, string(out))
+	name := l.began.Format("cli-20060102_150405.log")
+	body := strings.ReplaceAll(string(text), "{dir}", l.workspace)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600))
 }

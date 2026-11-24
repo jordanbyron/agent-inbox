@@ -60,7 +60,7 @@ func Builtins() Set {
 				Effort:      efforts,
 				Permissions: []string{"default", "accept-edits", "auto", "plan"},
 			},
-			Sessions: AgySessions{SQLite: "sqlite3"},
+			Sessions: AgySessions{},
 		},
 	}
 }

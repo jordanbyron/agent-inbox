@@ -1,0 +1,14 @@
+I1123 19:59:37.757193      22 server.go:2652] Starting language server process with pid 53420
+I1123 19:59:37.757369      22 server.go:2711] Language server version: 1.5.14
+I1123 19:59:37.781563       1 common.go:193] Launching CLI mode
+I1123 19:59:37.781595       1 common.go:214] CLI app data directory: /home/dev/.gemini/antigravity-cli
+I1123 19:59:37.781640       1 server.go:315] Creating CLI server backend: product=antigravity workspaceDirs=[{dir}] appDataDir=/home/dev/.gemini/antigravity-cli languageServer=true codeAssist=true
+I1123 19:59:37.782293       1 analytics.go:249] CLI startup completed (took 25.924542ms, phases [main_entered=0ms ls_start=0ms ls_ready=25ms launch_cli=25ms backend_created=25ms project_resolved=25ms])
+I1123 19:59:37.782443       1 printmode.go:209] Print mode: starting (promptLength=632, model="gemini-4-neon-high", conversationID="")
+I1123 19:59:37.782836       1 manager.go:592] Initializing CLI store manager for workspace {dir}
+I1123 19:59:39.444601       1 conversation_manager.go:836] Starting new conversation (agent=false)
+I1123 19:59:39.444667       1 server.go:1252] Conversation using project ID: default-cli-project
+I1123 19:59:39.451541       1 server.go:1269] Created conversation 8137cad9-9705-4bcd-b85c-d09597117b43 (backend=BACKEND_TYPE_UNSPECIFIED)
+I1123 19:59:39.452026       1 server.go:3575] GetConversationDetail: found conversation 8137cad9-9705-4bcd-b85c-d09597117b43 (active=true)
+I1123 19:59:39.452150       1 server.go:3575] GetConversationDetail: found conversation 8137cad9-9705-4bcd-b85c-d09597117b43 (active=true)
+I1123 19:59:39.452339       1 server.go:3575] GetConversationDetail: found conversation 8137cad9-9705-4bcd-b85c-d09597117b43 (active=true)

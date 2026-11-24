@@ -1,0 +1,6 @@
+I1123 19:48:39.700853      66 server.go:2652] Starting language server process with pid 36949
+I1123 19:48:39.701281      66 server.go:2711] Language server version: 1.5.14
+I1123 19:48:39.725539       1 common.go:193] Launching CLI mode
+I1123 19:48:39.725576       1 common.go:214] CLI app data directory: /home/dev/.gemini/antigravity-cli
+I1123 19:48:39.725591       1 server.go:315] Creating CLI server backend: product=antigravity workspaceDirs=[{dir}] appDataDir=/home/dev/.gemini/antigravity-cli languageServer=true codeAssist=true
+I1123 19:48:39.726308       1 manager.go:592] Initializing CLI store manager for workspace {dir}
