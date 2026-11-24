@@ -17,6 +17,7 @@ go install ./cmd/agent-inbox
 
 ```
 agent-inbox                 the list
+agent-inbox --modal         the list, closing on Esc or once it shows an agent
 agent-inbox new             the new-agent form, or flags for scripts
 agent-inbox open|snooze|wake|pin|settle|restore|alias|link|delete [AGENT]
 agent-inbox ls --json       the rows, for other tools
@@ -25,7 +26,8 @@ agent-inbox lua             Rex actions to paste into init.lua
 agent-inbox watch           the watcher (started for you)
 ```
 
-A verb with no agent acts on the agent in the current Rex block.
+A verb with no agent acts on the agent in the current Rex block. The
+snippet's `agent_inbox_modal` action opens the modal list over the tab.
 
 ## Keys
 
@@ -49,7 +51,7 @@ A verb with no agent acts on the agent in the current Rex block.
 | `P` | link a pull request by hand (empty clears) |
 | `Ctrl-x` | delete the family, its worktrees and branches (asks `y` first) |
 | `/` | filter; `Esc` clears |
-| `q` | quit |
+| `q` | quit (`Esc` too, with `--modal`) |
 
 ## Config
 

@@ -127,10 +127,15 @@ func (m Model) footer() string {
 		text = " " + theme.KeyName("/") + m.filter.Value() + theme.Dim("  esc clears")
 	default:
 		var hints []string
+		// A modal says how to close it first, where a narrow layer won't cut it off.
+		if m.modal {
+			hints = append(hints, theme.KeyName("esc")+" "+theme.Dim("close"))
+		}
 		for _, b := range bindings {
-			if b.footerKey != "" {
-				hints = append(hints, theme.KeyName(b.footerKey)+" "+theme.Dim(b.footerHelp))
+			if b.footerKey == "" || (m.modal && b.action == actionQuit) {
+				continue
 			}
+			hints = append(hints, theme.KeyName(b.footerKey)+" "+theme.Dim(b.footerHelp))
 		}
 		text = " " + strings.Join(hints, "  ")
 	}

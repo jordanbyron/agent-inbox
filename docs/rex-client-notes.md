@@ -165,3 +165,47 @@ waits until every connected app has sized a block since the watcher's
 last scan, at startup or after the stream reconnects, since until then a
 tab on screen looks like one that isn't. That doesn't cover a tab in an
 app's other window, which Rex gives no way to tell apart.
+
+## The left arrow and the harnesses' agents views
+
+Observed on 2026-11-24 against the same server (API revision 10), with
+Claude Code 2.1.331, Codex 0.165.0 and agy 1.5.14, in a throwaway session.
+
+- With an empty composer, Claude Code's last screen line ends in
+  `← 4 agents` (after `⏸ manual mode on · ` or `⏵⏵ auto mode on (shift+tab
+  to cycle) · `, and `esc to interrupt · ` while it works). Codex's last
+  line is `← for agents · ? for shortcuts`. Left then opens each one's own
+  agents view, and Esc comes back.
+- Both drop the hint once the composer has text, during a permission
+  prompt, while the slash menu or a dialog such as `/model` is up (Claude
+  Code's `/model` takes ←/→ for effort), and while Codex shows `esc again
+  to edit previous message`. Both keep it while the agent works.
+- The hint beats an empty composer line as the signal: Claude Code fills an
+  empty composer with a placeholder (`Try "edit <filepath> to…"`) or a
+  suggested prompt (`commit it`), and shows the hint all the same.
+- Both run on the alternate screen, so `format` returns one screen of text,
+  about 10 KB for Claude Code at 221 by 51.
+- agy shows no such hint, and left at its empty prompt does nothing.
+- A `left` binding's `fn(ctx, ev)` runs for `press` and `repeat`, never
+  `release`. `ev` holds `action`, `key` (`arrow_left`), `keybinding`
+  (`left`), `physical_keybinding` (`[ArrowLeft]`), `mods`, `text`,
+  `block_id`, `session_id`, `source` (`input`), `type` (`key`) and the raw
+  `payload`; `ctx` held `session_id` and `block_id`. Returning false sent
+  the key on: `echo abc`, a press and a repeat, then `X` gave `echo aXbc`.
+- A function that raises, or runs past 5 seconds, swallows the key.
+  `rex.block.call` doesn't raise: on a bad block it returns nil and the
+  error.
+- `client.set_script` loads Lua for the calling connection only, and
+  `client.key` sends that connection a key, which goes through its script's
+  bindings and then the config file's. That runs a binding without
+  touching init.lua: load the script and send keys from one `rex do`
+  script. `rex.action` in such a script is accepted but not offered.
+- Through `client.key`, left with nothing bound, or bound to a function
+  that only returns false, took under 0.1 ms. With agent-inbox's check it
+  took 0.03 ms in a shell (one `program_status`), 0.1 ms in Codex and 0.33
+  to 0.39 ms in Claude Code (`program_status` and `format`). Each is the
+  mean of 200 presses.
+- Not checked: a key pressed in Rex.app reaching a binding in init.lua,
+  since that needs `rex config reload`. `client.keymap` reports a key bound
+  to a function as `client.key.forward`, so the app sends it through
+  `client.key`, the path measured above.

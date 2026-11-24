@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -47,4 +48,18 @@ func TestListSaysWhichFixtureItCannotRead(t *testing.T) {
 	cmd.SetArgs([]string{"list", "--fixture", "testdata/missing.json"})
 
 	require.ErrorContains(t, cmd.Execute(), "reading testdata/missing.json")
+}
+
+func TestModalIsAFlagOfTheListAndTheRoot(t *testing.T) {
+	for _, args := range [][]string{{"--help"}, {"list", "--help"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var out bytes.Buffer
+			cmd := cli.New()
+			cmd.SetOut(&out)
+			cmd.SetArgs(args)
+
+			require.NoError(t, cmd.Execute())
+			require.Contains(t, out.String(), "--modal")
+		})
+	}
 }

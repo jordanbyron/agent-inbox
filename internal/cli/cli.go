@@ -9,13 +9,15 @@ import (
 
 // New returns the agent-inbox root command with every subcommand attached.
 func New() *cobra.Command {
+	var modal bool
 	root := &cobra.Command{
 		Use:          "agent-inbox",
 		Short:        "A triage inbox for coding agents running in Rex",
 		Args:         cobra.NoArgs,
-		RunE:         showInbox,
+		RunE:         func(cmd *cobra.Command, _ []string) error { return showInbox(cmd, modal) },
 		SilenceUsage: true,
 	}
+	root.Flags().BoolVar(&modal, "modal", false, modalUsage)
 	root.AddCommand(newVersionCommand(), newListCommand(), newLsCommand(), newWatchCommand())
 	root.AddCommand(newFormCommand(openInbox))
 	root.AddCommand(newReapCommand(openInbox), newLuaCommand())

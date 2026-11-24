@@ -43,6 +43,9 @@ type Config struct {
 	// Restart starts the watcher again, for a snapshot gone stale while
 	// the list is on screen. Nil leaves the watcher alone.
 	Restart func() error
+	// Modal makes the list close once it shows an agent, and on Esc, as
+	// one in a Rex floating layer should.
+	Modal bool
 }
 
 // ReloadMsg tells the model that the snapshot file changed.
@@ -57,6 +60,7 @@ type Model struct {
 	now     func() time.Time
 	home    string
 	restart func() error
+	modal   bool
 
 	snap      snapshot.Snapshot
 	loaded    bool
@@ -96,6 +100,7 @@ func New(c Config) Model {
 		now:      c.Now,
 		home:     c.Home,
 		restart:  c.Restart,
+		modal:    c.Modal,
 		expanded: map[triage.Section]bool{},
 		filter:   newInput("", 0),
 		spinner:  spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(theme.Yellow)),
@@ -143,7 +148,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		cmd = m.press(msg)
 	case doneMsg:
-		m.finish(msg)
+		cmd = m.finish(msg)
 	case formMsg:
 		cmd = m.runForm(msg)
 	}
@@ -240,6 +245,9 @@ func (m *Model) perform(a action) tea.Cmd {
 	case actionFilter:
 		m.filtering = true
 	case actionEscape:
+		if m.modal && m.filter.Value() == "" {
+			return tea.Quit
+		}
 		m.clearFilter()
 	default:
 		return m.performOnRow(a)
@@ -324,7 +332,7 @@ func (m *Model) activate() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	return m.run("showing", func(a Actions) error { return a.Open(row.Key) }, afterAction{})
+	return m.run("showing", func(a Actions) error { return a.Open(row.Key) }, afterAction{quit: m.modal})
 }
 
 // doneMsg says how an action run by run went.
@@ -342,6 +350,8 @@ type afterAction struct {
 	// dialog closes when the action succeeds, and stays up to be fixed
 	// when it is refused.
 	dialog dialog
+	// quit closes the list when the action succeeds.
+	quit bool
 }
 
 // run calls an action in a Cmd, since one that goes to Rex or git can take
@@ -377,8 +387,7 @@ func (m *Model) openForm() tea.Cmd {
 // takes it back when the form exits.
 func (m *Model) runForm(msg formMsg) tea.Cmd {
 	if msg.err != nil || msg.cmd == nil {
-		m.finish(doneMsg{err: msg.err})
-		return nil
+		return m.finish(doneMsg{err: msg.err})
 	}
 	return tea.ExecProcess(msg.cmd, func(err error) tea.Msg {
 		if err != nil {
@@ -388,11 +397,14 @@ func (m *Model) runForm(msg formMsg) tea.Cmd {
 	})
 }
 
-func (m *Model) finish(msg doneMsg) {
+func (m *Model) finish(msg doneMsg) tea.Cmd {
 	m.busy = ""
 	if msg.err != nil {
 		m.say(msg.err.Error())
-		return
+		return nil
+	}
+	if msg.then.quit {
+		return tea.Quit
 	}
 	if msg.then.leaving != "" && m.selected == rowStop(msg.then.leaving) {
 		m.selectNeighbor()
@@ -404,6 +416,7 @@ func (m *Model) finish(msg doneMsg) {
 		m.say(msg.then.notice)
 	}
 	m.reload()
+	return nil
 }
 
 func (m *Model) say(notice string) {

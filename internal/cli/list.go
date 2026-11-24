@@ -17,29 +17,33 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/verbs"
 )
 
+const modalUsage = "close once an agent is shown, or on Esc, as in a Rex floating layer"
+
 func newListCommand() *cobra.Command {
 	var fixture string
+	var modal bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Show the inbox",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if fixture != "" {
-				m, err := fixtureList(fixture)
+				m, err := fixtureList(fixture, modal)
 				if err != nil {
 					return err
 				}
 				return runList(cmd, m, "")
 			}
-			return showInbox(cmd, nil)
+			return showInbox(cmd, modal)
 		},
 	}
 	cmd.Flags().StringVar(&fixture, "fixture", "", "draw this snapshot file, with every action stubbed out")
+	cmd.Flags().BoolVar(&modal, "modal", false, modalUsage)
 	return cmd
 }
 
 // showInbox makes sure the watcher is running and shows the list it writes.
-func showInbox(cmd *cobra.Command, _ []string) error {
+func showInbox(cmd *cobra.Command, modal bool) error {
 	srv, err := findServer(cmd.Context())
 	if err != nil {
 		return err
@@ -52,7 +56,7 @@ func showInbox(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	restart := func() error { return ensureWatcher(cmd.Context(), srv) }
-	return runList(cmd, liveList(cmd.Context(), inbox, restart), srv.dir)
+	return runList(cmd, liveList(cmd.Context(), inbox, restart, modal), srv.dir)
 }
 
 // runList shows the list until it quits. With a state directory, a new
@@ -100,7 +104,7 @@ func reloadOnSnapshot(dir string, program *tea.Program) (stop func()) {
 }
 
 // liveList draws the watcher's snapshot, with each key running a verb.
-func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error) list.Model {
+func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, modal bool) list.Model {
 	return list.New(list.Config{
 		Load: func() (snapshot.Snapshot, time.Time, error) {
 			var snap snapshot.Snapshot
@@ -111,12 +115,13 @@ func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error) lis
 		Now:     time.Now,
 		Home:    inbox.Home,
 		Restart: restart,
+		Modal:   modal,
 	})
 }
 
 // fixtureList draws the fixture as if it were just written, with the clock
 // starting from when it was, so its ages read as the fixture means them.
-func fixtureList(path string) (list.Model, error) {
+func fixtureList(path string, modal bool) (list.Model, error) {
 	var snap snapshot.Snapshot
 	writtenAt, err := state.ReadSnapshotFile(path, &snap)
 	if err != nil {
@@ -133,5 +138,6 @@ func fixtureList(path string) (list.Model, error) {
 		Actions: list.NotWired(),
 		Now:     now,
 		Home:    home,
+		Modal:   modal,
 	}), nil
 }

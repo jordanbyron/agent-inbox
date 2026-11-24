@@ -35,12 +35,24 @@ type screen struct {
 
 func newScreen(t *testing.T, snap snapshot.Snapshot, width, height int) *screen {
 	t.Helper()
+	return openScreen(t, snap, width, height, false)
+}
+
+// newModal is the list as list --modal shows it, 100 columns wide.
+func newModal(t *testing.T, height int) *screen {
+	t.Helper()
+	return openScreen(t, fixture(t), 100, height, true)
+}
+
+func openScreen(t *testing.T, snap snapshot.Snapshot, width, height int, modal bool) *screen {
+	t.Helper()
 	s := &screen{t: t, actions: &recorder{}, clock: now}
 	s.model = list.New(list.Config{
 		Load:    func() (snapshot.Snapshot, time.Time, error) { return snap, now, nil },
 		Actions: s.actions,
 		Now:     func() time.Time { return s.clock },
 		Home:    "/home/dev",
+		Modal:   modal,
 	})
 	s.send(tea.WindowSizeMsg{Width: width, Height: height})
 	return s
@@ -167,6 +179,10 @@ func TestGoldenFrames(t *testing.T) {
 			golden.Require(t, tc.name, s.frame())
 		})
 	}
+}
+
+func TestGoldenModal(t *testing.T) {
+	golden.Require(t, "modal_100x30", newModal(t, 30).frame())
 }
 
 func TestGoldenEmptyInbox(t *testing.T) {

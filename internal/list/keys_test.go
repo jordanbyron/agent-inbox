@@ -203,6 +203,76 @@ func TestQuit(t *testing.T) {
 	}
 }
 
+func TestModal(t *testing.T) {
+	quits := func(t *testing.T, s *screen) {
+		t.Helper()
+		require.NotNil(t, s.last)
+		require.IsType(t, tea.QuitMsg{}, s.last())
+	}
+	stays := func(t *testing.T, s *screen) {
+		t.Helper()
+		require.Nil(t, s.last)
+	}
+
+	t.Run("Enter shows the agent and closes it", func(t *testing.T) {
+		s := newModal(t, 30).press("enter")
+		require.Equal(t, []string{"open a7f3c2"}, s.actions.calls)
+		quits(t, s)
+	})
+
+	t.Run("a refused open keeps it up and says why", func(t *testing.T) {
+		s := newModal(t, 30)
+		s.actions.err = errors.New("no such tab")
+		s.press("enter")
+		stays(t, s)
+		require.Contains(t, s.header(), "no such tab")
+	})
+
+	t.Run("Enter on a fold opens the fold", func(t *testing.T) {
+		s := newModal(t, 30).press("G", "enter")
+		require.Contains(t, s.selectedLine(), "update the README")
+		stays(t, s)
+	})
+
+	for _, key := range []string{"esc", "q"} {
+		t.Run(key+" closes it", func(t *testing.T) {
+			quits(t, newModal(t, 30).press(key))
+		})
+	}
+
+	t.Run("Esc clears a kept filter before it closes", func(t *testing.T) {
+		s := newModal(t, 30).press("/").typing("billing").press("enter", "esc")
+		stays(t, s)
+		require.Contains(t, s.frame(), "release notes for v2")
+		quits(t, s.press("esc"))
+	})
+
+	t.Run("Esc in the filter only leaves the filter", func(t *testing.T) {
+		stays(t, newModal(t, 30).press("/").typing("billing").press("esc"))
+	})
+
+	t.Run("Esc in a dialog only closes the dialog", func(t *testing.T) {
+		s := newModal(t, 30).press("s", "esc")
+		stays(t, s)
+		require.NotContains(t, s.frame(), "15 minutes")
+	})
+
+	t.Run("h still closes a fold", func(t *testing.T) {
+		s := newModal(t, 80).press("G", "z", "o", "h")
+		require.Contains(t, s.selectedLine(), "… 3 settled")
+		stays(t, s)
+	})
+
+	t.Run("the left arrow does nothing", func(t *testing.T) {
+		stays(t, newModal(t, 30).send(tea.KeyPressMsg{Code: tea.KeyLeft}))
+	})
+
+	t.Run("without --modal Esc and Enter leave the list up", func(t *testing.T) {
+		stays(t, tall(t).press("esc"))
+		stays(t, tall(t).press("enter"))
+	})
+}
+
 func TestPromptsStartFromWhatIsSet(t *testing.T) {
 	s := tall(t).press("tab", "tab", "j", "j", "a")
 	require.Contains(t, s.frame(), "> deploy preview")

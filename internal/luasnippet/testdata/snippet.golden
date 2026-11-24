@@ -76,6 +76,23 @@ rex.action{
   end,
 }
 
+local function open_modal(ctx)
+  local window = window_holding(check(rex.session.view{}), ctx.block_id)
+  if window == nil then error("no tab to open the inbox over", 0) end
+  check(rex.session.new_layer{
+    window_id = window.window_id,
+    bounds = { 0.1, 0.1, 0.8, 0.8 },
+    layout = running({ agent_inbox, "list", "--modal" }),
+    focus = true,
+  })
+end
+
+rex.action{
+  name = "agent_inbox_modal",
+  title = "Agent Inbox: Open as a Modal",
+  run = function(ctx, args) open_modal(ctx) end,
+}
+
 local function said(output)
   return (output:gsub("^Error: ", ""):gsub("%s+$", ""))
 end
@@ -109,7 +126,43 @@ rex.action{
 -- The keys are yours to choose. For example, after Cmd+I:
 -- rex.bind("cmd+i>n", "agent_inbox_new")
 -- rex.bind("cmd+i>i", "agent_inbox_tab")
+-- rex.bind("cmd+i>m", "agent_inbox_modal")
 -- rex.bind("cmd+i>b", "agent_inbox_beside")
 -- rex.bind("cmd+i>s", "agent_inbox_snooze", { duration = "1h" })
 -- rex.bind("cmd+i>t", "agent_inbox_pin")
 -- rex.bind("cmd+i>x", "agent_inbox_settle")
+
+-- The left arrow opens the inbox as a modal where Claude Code or Codex would
+-- take it to their own agents view, and is a cursor key everywhere else.
+-- Uncomment to use.
+--
+-- local terminal = "com.superlogical.terminal"
+--
+-- -- What each harness shows at the end of its screen while the left arrow
+-- -- would open its agents view. The hint goes once the composer has text, and
+-- -- while a permission prompt, menu or dialog is up.
+-- local agents_view_hints = {
+--   ["claude-code"] = "← %d+ agents?$",
+--   codex = "← for agents",
+-- }
+--
+-- local function left_opens_agents_view(block_id)
+--   local status = rex.block.call(terminal, "program_status", { block_id = block_id })
+--   local hint
+--   for _, record in ipairs(status and status.records or {}) do
+--     hint = hint or agents_view_hints[record.app]
+--   end
+--   if hint == nil then return false end
+--   local screen = rex.block.call(terminal, "format", { block_id = block_id, trim = true })
+--   local last = ""
+--   for line in (screen and screen.content or ""):gmatch("[^\n]+") do last = line end
+--   return last:find(hint) ~= nil
+-- end
+--
+-- -- A key function that raises swallows the key, so a failed call above
+-- -- reads as "not an agent" and the key goes on to the terminal.
+-- rex.bind("left", function(ctx, ev)
+--   if ctx.block_id == nil or not left_opens_agents_view(ctx.block_id) then return false end
+--   open_modal(ctx)
+--   return true
+-- end)
