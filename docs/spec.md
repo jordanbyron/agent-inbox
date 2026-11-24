@@ -224,6 +224,9 @@ session, Model, Effort, Permissions and Worktree.
   how its harness mentions a file and which directories hold its commands.
   Claude's built-in recipe also reads installed plugins, as `SlashCommands`
   does today.
+- Directory opens a list of the directories under the typed path, filtered
+  by what is typed after the last `/`, with recent directories first until
+  the path is edited.
 - `Tab` moves between fields, `Ctrl-S` starts the agent and `Ctrl-O` starts
   it and shows its tab.
 - An empty Name is filled from the prompt's first words. No model is asked.

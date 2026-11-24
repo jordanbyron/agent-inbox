@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 
+	"github.com/jordanbyron/agent-inbox/internal/dirpicker"
 	"github.com/jordanbyron/agent-inbox/internal/form"
 	"github.com/jordanbyron/agent-inbox/internal/recipe"
 )
@@ -43,7 +44,18 @@ type screen struct {
 	repos map[string]bool
 	opts  form.Options
 	model form.Model
-	last  tea.Cmd
+	quit  bool
+}
+
+// homeDirs browses the screen's home directory, with its repositories
+// those the screen says are.
+type homeDirs struct {
+	dirpicker.OS
+	s *screen
+}
+
+func (d homeDirs) IsRepo(dir string) bool {
+	return d.s.repos[dir]
 }
 
 func newScreen(t *testing.T, width, height int, configure ...func(s *screen)) *screen {
@@ -63,6 +75,7 @@ func newScreen(t *testing.T, width, height int, configure ...func(s *screen)) *s
 		Now:             func() time.Time { return now },
 		Clipboard:       s.clip,
 		ImageDir:        filepath.Join(home, "images"),
+		DirFS:           homeDirs{s: s},
 	}
 	for _, c := range configure {
 		c(s)
@@ -87,9 +100,28 @@ func (s *screen) write(path, body string) {
 func (s *screen) send(msgs ...tea.Msg) *screen {
 	for _, msg := range msgs {
 		next, cmd := s.model.Update(msg)
-		s.model, s.last = next.(form.Model), cmd
+		s.model = next.(form.Model)
+		s.run(cmd)
 	}
 	return s
+}
+
+// run does at once what Bubble Tea does with a command in the background.
+func (s *screen) run(cmd tea.Cmd) {
+	if cmd == nil {
+		return
+	}
+	switch msg := cmd().(type) {
+	case nil:
+	case tea.QuitMsg:
+		s.quit = true
+	case tea.BatchMsg:
+		for _, c := range msg {
+			s.run(c)
+		}
+	default:
+		s.send(msg)
+	}
 }
 
 func (s *screen) press(keys ...string) *screen {
@@ -167,14 +199,6 @@ func (s *screen) focusedLabel() string {
 		}
 	}
 	return ""
-}
-
-func (s *screen) quit() bool {
-	if s.last == nil {
-		return false
-	}
-	_, ok := s.last().(tea.QuitMsg)
-	return ok
 }
 
 func (s *screen) result() form.Result {

@@ -50,7 +50,7 @@ func repeat(key string, n int) []string {
 func TestPromptTakesTypingAndNewlines(t *testing.T) {
 	s := newScreen(t, 100, 30).typing("first").press("enter").typing("second").press("ctrl+s")
 	require.Equal(t, "first\nsecond", s.result().Prompt)
-	require.True(t, s.quit())
+	require.True(t, s.quit)
 }
 
 func TestUpAndDownMoveWithinAPromptOfSeveralRows(t *testing.T) {
@@ -96,7 +96,7 @@ func TestStartsWithTheDefaults(t *testing.T) {
 func TestCtrlOShowsTheTab(t *testing.T) {
 	s := newScreen(t, 100, 30).typing("do it").press("ctrl+o")
 	require.True(t, s.result().ShowTab)
-	require.True(t, s.quit())
+	require.True(t, s.quit)
 }
 
 func TestChangingHarness(t *testing.T) {
@@ -196,38 +196,48 @@ func TestDirectory(t *testing.T) {
 	}
 }
 
-func TestTabCompletesTheDirectory(t *testing.T) {
-	s := newScreen(t, 100, 30)
-	s.mkdir("src/apple", "src/apricot", "src/banana", "src/.hidden")
-	s.write("src/avocado.txt", "")
-	s.press("tab", "tab", "tab", "ctrl+u").typing("~/src/b").press("tab")
-	require.Contains(t, s.lineWith("Directory"), "~/src/banana/")
+func TestDirectoryList(t *testing.T) {
+	t.Run("opens while Directory has focus", func(t *testing.T) {
+		s := newScreen(t, 100, 30).press("tab", "tab", "tab")
+		require.Contains(t, s.frame(), "  ..")
+		s.press("tab")
+		require.NotContains(t, s.frame(), "  ..")
+	})
 
-	s.press("ctrl+u").typing("~/src/a").press("tab")
-	require.Contains(t, s.lineWith("Directory"), "~/src/ap ")
-	require.Contains(t, s.footer(), "matches: apple  apricot")
-	s.press("tab")
-	require.Equal(t, "Directory", s.focusedLabel(), "an ambiguous path keeps Tab completing")
-	s.typing("pl").press("tab")
-	require.Contains(t, s.lineWith("Directory"), "~/src/apple/")
-	s.press("tab")
-	require.Equal(t, "Rex", s.focusedLabel())
-}
+	t.Run("Tab completes a fragment, then moves on", func(t *testing.T) {
+		s := newScreen(t, 100, 30)
+		s.mkdir("src/apple", "src/banana")
+		s.press("tab", "tab", "tab", "ctrl+u").typing("~/src/b").press("tab")
+		require.Contains(t, s.lineWith("Directory"), "~/src/banana/")
+		require.Contains(t, s.footer(), "⇥ next")
+		s.press("tab")
+		require.Equal(t, "Rex", s.focusedLabel())
+	})
 
-func TestTabListsADirectoryEndingInASlash(t *testing.T) {
-	s := newScreen(t, 100, 30)
-	s.mkdir("src/apple", "src/apricot", "src/.hidden")
-	s.press("tab", "tab", "tab", "ctrl+u").typing("~/src/").press("tab")
-	require.Contains(t, s.footer(), "matches: apple  apricot")
-	require.Contains(t, s.lineWith("Directory"), "~/src/ap ")
-	s.press("ctrl+u").typing("~/").press("tab")
-	require.Contains(t, s.footer(), "matches: code  notes  src")
-	require.Contains(t, s.lineWith("Directory"), "~/ ")
+	t.Run("Worktree follows the directory browsed to", func(t *testing.T) {
+		s := newScreen(t, 100, 30).typing("do it").press("tab", "tab", "tab")
+		s.press("down", "left")
+		require.Contains(t, s.lineWith("Directory"), "~/code/")
+		require.Empty(t, s.lineWith("Worktree"), "~/code is not a git repository")
+		s.press("down", "enter")
+		require.Contains(t, s.lineWith("Directory"), "~/code/site/")
+		require.Contains(t, s.lineWith("Worktree"), "[yes]")
+		s.press("ctrl+s")
+		require.Equal(t, filepath.Join(s.home, "code", "site"), s.result().Dir)
+	})
+
+	t.Run("Esc leaves the list before it cancels", func(t *testing.T) {
+		s := newScreen(t, 100, 30).typing("h").press("tab", "tab", "tab", "down", "esc")
+		require.Contains(t, s.frame(), "New agent")
+		require.Contains(t, s.footer(), "esc cancel")
+		s.press("esc")
+		require.Contains(t, s.frame(), "Discard this prompt? (y/n)")
+	})
 }
 
 func TestStartRefusesAnEmptyPrompt(t *testing.T) {
 	s := newScreen(t, 100, 30).press("tab", "ctrl+s")
-	require.False(t, s.quit())
+	require.False(t, s.quit)
 	require.Contains(t, s.footer(), "a prompt is required")
 	require.Equal(t, "Prompt", s.focusedLabel())
 	_, ok := s.model.Submitted()
@@ -246,14 +256,14 @@ func TestStartRefusesAMissingDirectory(t *testing.T) {
 func TestEscape(t *testing.T) {
 	t.Run("cancels at once when the prompt is empty", func(t *testing.T) {
 		s := newScreen(t, 100, 30).press("esc")
-		require.True(t, s.quit())
+		require.True(t, s.quit)
 		_, ok := s.model.Submitted()
 		require.False(t, ok)
 	})
 
 	t.Run("asks first once the prompt has text", func(t *testing.T) {
 		s := newScreen(t, 100, 30).typing("h").press("esc")
-		require.False(t, s.quit())
+		require.False(t, s.quit)
 		require.Contains(t, s.frame(), "Discard this prompt? (y/n)")
 		require.Contains(t, s.footer(), "y discard")
 	})
@@ -261,7 +271,7 @@ func TestEscape(t *testing.T) {
 	t.Run("keeps editing on n or esc", func(t *testing.T) {
 		for _, key := range []string{"n", "esc", "q"} {
 			s := newScreen(t, 100, 30).typing("h").press("esc", key)
-			require.False(t, s.quit())
+			require.False(t, s.quit)
 			require.Contains(t, s.frame(), "New agent")
 			s.press("ctrl+s")
 			require.Equal(t, "h", s.result().Prompt, "the prompt is untouched after %s", key)
@@ -270,14 +280,14 @@ func TestEscape(t *testing.T) {
 
 	t.Run("discards on y", func(t *testing.T) {
 		s := newScreen(t, 100, 30).typing("h").press("esc", "y")
-		require.True(t, s.quit())
+		require.True(t, s.quit)
 		_, ok := s.model.Submitted()
 		require.False(t, ok)
 	})
 
 	t.Run("Ctrl-C cancels without asking", func(t *testing.T) {
 		s := newScreen(t, 100, 30).typing("h").press("ctrl+c")
-		require.True(t, s.quit())
+		require.True(t, s.quit)
 	})
 }
 
