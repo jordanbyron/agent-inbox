@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/jordanbyron/agent-inbox/internal/config"
+	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/verbs"
 )
 
@@ -24,3 +26,9 @@ var FromForm = fromForm
 
 // InRexEnv is how a pane Rex starts runs this binary: the form, the parked inbox.
 var InRexEnv = inRexEnv
+
+// ReapDeleter builds the watcher's reap deleter for a state directory without
+// calling findServer or ensureWatcher.
+func ReapDeleter(stateDir string, cfg config.Config) (reap.Deleter, error) {
+	return reapDeleter(server{dir: stateDir}, cfg)
+}

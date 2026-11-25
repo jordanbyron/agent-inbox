@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -68,9 +67,12 @@ func describeFamily(fam reap.Family, now time.Time) string {
 	return s
 }
 
-func reapDeleter(ctx context.Context, cfg config.Config) (reap.Deleter, error) {
+// reapDeleter builds the Inbox the watcher uses to delete reaped families.
+// It calls newInbox directly rather than openInbox so the watcher does not
+// call ensureWatcher and recursively spawn itself.
+func reapDeleter(srv server, cfg config.Config) (reap.Deleter, error) {
 	if !cfg.Reap {
 		return nil, nil
 	}
-	return openInbox(ctx)
+	return newInbox(srv)
 }

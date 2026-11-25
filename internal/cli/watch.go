@@ -41,7 +41,7 @@ func newWatchCommand() *cobra.Command {
 			}
 			defer func() { _ = log.Close() }()
 			logger := slog.New(slog.NewTextHandler(log, nil))
-			deleter, err := reapDeleter(ctx, cfg)
+			deleter, err := reapDeleter(srv, cfg)
 			if err != nil {
 				return err
 			}
