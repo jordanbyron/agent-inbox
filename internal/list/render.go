@@ -182,7 +182,11 @@ func (m Model) body(snap snapshot.Snapshot) []bodyLine {
 		}
 		for _, row := range sec.Rows {
 			child := row.Parent != "" && keys[row.Parent]
-			for i, text := range m.rowLines(row, sec.Name, child) {
+			section := sec.Name
+			if section == sectionTab {
+				section, _ = sectionOf(m.filtered(), rowStop(row.Key))
+			}
+			for i, text := range m.rowLines(row, section, child) {
 				line := bodyLine{text: text, detail: i > 0}
 				if i == 0 {
 					line.stop = rowStop(row.Key)

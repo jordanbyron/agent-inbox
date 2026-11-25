@@ -36,7 +36,7 @@ func (in *Inbox) OpenForm(ctx context.Context) (*exec.Cmd, error) {
 	}
 	windowID, err := in.windowOf(ctx, pane)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening the form: %w", err)
 	}
 	_, err = in.Rex.OpenLayer(ctx, rex.LayerOptions{
 		SessionID: pane.SessionID,
@@ -49,6 +49,15 @@ func (in *Inbox) OpenForm(ctx context.Context) (*exec.Cmd, error) {
 		return nil, fmt.Errorf("opening the form in Rex: %w", err)
 	}
 	return nil, nil
+}
+
+// Tab returns the window of the Rex block this runs in, or "" outside Rex.
+func (in *Inbox) Tab(ctx context.Context) (string, error) {
+	pane, inRex, err := rex.FindPane(ctx, in.Rex, in.Getenv)
+	if err != nil || !inRex {
+		return "", err
+	}
+	return in.windowOf(ctx, pane)
 }
 
 // The layer has to name the pane's own window: the session's active window
@@ -65,5 +74,5 @@ func (in *Inbox) windowOf(ctx context.Context, pane rex.Pane) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("opening the form: block %s is in no window of its session", pane.BlockID)
+	return "", fmt.Errorf("block %s is in no window of its session", pane.BlockID)
 }

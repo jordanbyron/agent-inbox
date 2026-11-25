@@ -1,0 +1,30 @@
+ ▌ agent-inbox   ★ 1  ● 7  ✻ 2  ◌ 1  z 2  ◦ 3     
+                                                  
+ ▎ THIS TAB ────────────────────────────────── 1  
+ ▶ ? fix the login redirec…  #901 open · ✗ checks 
+                                                  
+ ▎ PINNED ──────────────────────────────────── 1  
+   ✓ release note…  #912 open · changes requested 
+                                                  
+ ▎ NEEDS YOU ───────────────────────────────── 6  
+   ✓ migrate billing to the new queue   #77 draft 
+ ● ?   queue names                                
+   ◦   audit the old cron jobs                    
+   ⠋   port the retry worker                      
+ ● ✗ nightly import                               
+ ● ? sync the team calendar                       
+                                                  
+ ▎ ACTIVE ──────────────────────────────────── 6  
+   · claude                                       
+   ⠋ Explain why the flaky spec in spec/poller_s… 
+   ◌ deploy preview                               
+ ● ✓ 🚀 launch checklist …  #230 open · conflicts 
+   ✓ bump dependencies           #940 merged · +1 
+   ■ triage github …  github.com/acme/app/pull/77 
+                                                  
+ ▎ WORKING ─────────────────────────────────── 1  
+   … 1 working                                    
+                                                  
+ ▎ SNOOZED ─────────────────────────────────── 2  
+   … 2 snoozed                                    
+ j/k move  ⏎ show  n new  t pin  s snooze  u wake…

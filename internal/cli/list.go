@@ -55,8 +55,12 @@ func showInbox(cmd *cobra.Command, modal bool) error {
 	if err != nil {
 		return err
 	}
+	// Rex counts a floating layer's block in the window under it, so a modal
+	// leads with that tab's agents as a split does. A list that can't place
+	// itself still works.
+	tab, _ := inbox.Tab(cmd.Context())
 	restart := func() error { return ensureWatcher(cmd.Context(), srv) }
-	return runList(cmd, liveList(cmd.Context(), inbox, restart, modal), srv.dir)
+	return runList(cmd, liveList(cmd.Context(), inbox, restart, modal, tab), srv.dir)
 }
 
 // runList shows the list until it quits. With a state directory, a new
@@ -104,7 +108,7 @@ func reloadOnSnapshot(dir string, program *tea.Program) (stop func()) {
 }
 
 // liveList draws the watcher's snapshot, with each key running a verb.
-func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, modal bool) list.Model {
+func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, modal bool, tab string) list.Model {
 	return list.New(list.Config{
 		Load: func() (snapshot.Snapshot, time.Time, error) {
 			var snap snapshot.Snapshot
@@ -116,6 +120,7 @@ func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, mod
 		Home:    inbox.Home,
 		Restart: restart,
 		Modal:   modal,
+		Tab:     tab,
 	})
 }
 
