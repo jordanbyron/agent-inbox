@@ -15,6 +15,13 @@ revision 10, unless it says otherwise.
   `~/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS`,
   whose `rex version` said revision 10. That is why `FindBinary` tries it
   first.
+- Processes started from `init.lua` via `rex.exec` or `rex.exec.start` run in
+  the Rex server's environment, which has `HOME` and `REX_SERVER` set, no
+  `REX_BIN_DIR`, and no `rex` on `PATH`. On 2026-11-25, build 2116 renamed
+  `/Applications/Rex Beta.app` to `/Applications/Rex.app`, breaking every
+  `init.lua` helper (`hold-focus`, `snooze`, `pin`, `settle`) that fell back
+  to the old bundle path. `FindBinary` now checks the staged server copy under
+  `HOME` before `/Applications/Rex.app` and `/Applications/Rex Beta.app`.
 - A pane also gets `REX_SESSION` and `REX_BLOCK` as ids (`session:<uuid>`,
   `block:<uuid>`) and `REX_SERVER` as a `unix://` URL of the socket.
 - From 0.1.0-preview.23 (API revision 19, seen 2026-11-25) a pane gets

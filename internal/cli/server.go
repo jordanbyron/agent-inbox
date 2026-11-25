@@ -17,11 +17,16 @@ type server struct {
 	dir string
 }
 
-func findServer(ctx context.Context) (server, error) {
+func findRexBinary() (string, error) {
 	bin, err := rex.FindBinary(os.Getenv)
 	if errors.Is(err, rex.ErrNoBinary) {
-		return server{}, errors.New("agent-inbox needs Rex: no rex binary in REX_BIN_DIR, PATH or " + rex.MacAppBinary)
+		return "", errors.New("agent-inbox needs Rex: no rex binary in REX_BIN_DIR, PATH or " + rex.MacAppBinary)
 	}
+	return bin, err
+}
+
+func findServer(ctx context.Context) (server, error) {
+	bin, err := findRexBinary()
 	if err != nil {
 		return server{}, err
 	}

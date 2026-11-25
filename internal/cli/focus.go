@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,10 +18,7 @@ func newHoldFocusCommand() *cobra.Command {
 		Hidden: true,
 		Args:   cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			bin, err := rex.FindBinary(os.Getenv)
-			if errors.Is(err, rex.ErrNoBinary) {
-				return errors.New("agent-inbox needs Rex: no rex binary in REX_BIN_DIR, PATH or " + rex.MacAppBinary)
-			}
+			bin, err := findRexBinary()
 			if err != nil {
 				return err
 			}
