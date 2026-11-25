@@ -1,0 +1,30 @@
+ ▌ agent-inbox   ★ 1 pinned  ·  ● 1 needs you  ·  ◦ 1 settled                                       
+                                                                                                    
+ ▎ PINNED ────────────────────────────────────────────────────────────────────────────────────── 1  
+ ▶ ✓ release notes for v2                           done · 15m · #912 open · changes requested  app 
+       ↳ Drafted notes for 14 merged pull requests                                                  
+                                                                                                    
+ ▎ NEEDS YOU ─────────────────────────────────────────────────────────────────────────────────── 1  
+ ● ? fix the login redirect loop            needs you: permission · 12s · #901 open · ✗ checks  app 
+       ↳ Bash: rm -rf node_modules && npm ci                                                        
+                                                                                                    
+ ▎ ACTIVE ────────────────────────────────────────────────────────────────────────────────────── 1  
+   ✓ bump dependencies                                            done · 3h · #940 merged · +1  app 
+       ↳ ~/code/app                                                                                 
+                                                                                                    
+ ▎ SETTLED ───────────────────────────────────────────────────────────────────────────────────── 1  
+   … 1 settled                                                                                      
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ /#9  esc clears                                                                                    

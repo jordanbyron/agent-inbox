@@ -1,0 +1,60 @@
+ ▌ agent-inbox   ★ 1  ● 7  ✻ 2  ◌ 1  z 2  ◦ 3     
+                                                  
+ ▎ PINNED ──────────────────────────────────── 1  
+   ✓ release note…  #912 open · changes requested 
+                                                  
+ ▎ NEEDS YOU ───────────────────────────────── 7  
+ ● ? fix the login redirec…  #901 open · ✗ checks 
+   ✓ migrate billing to the new queue   #77 draft 
+ ● ?   queue names                                
+   ◦   audit the old cron jobs                    
+   ⠋   port the retry worker                      
+ ● ✗ nightly import                               
+ ● ? sync the team calendar                       
+                                                  
+ ▎ ACTIVE ──────────────────────────────────── 6  
+   · claude                                       
+   ⠋ Explain why the flaky spec in spec/poller_s… 
+   ◌ deploy preview                               
+ ● ✓ 🚀 launch checklist …  #230 open · conflicts 
+   ✓ bump dependencies           #940 merged · +1 
+   ■ triage github …  github.com/acme/app/pull/77 
+                                                  
+ ▎ WORKING ─────────────────────────────────── 1  
+ ▶ ⠋ index the monorepo                           
+                                                  
+ ▎ SNOOZED ─────────────────────────────────── 2  
+   z review the API feedback             #55 open 
+   z long refactor of the session store           
+                                                  
+ ▎ SETTLED ─────────────────────────────────── 3  
+   ◦ update the README                #950 merged 
+   ◦ spike: websocket client            #3 closed 
+   ◦ flaky deploy script                          
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+                                                  
+ j/k move  ⏎ show  n new  t pin  s snooze  u wake…

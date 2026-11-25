@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# Local CI: format, lint, vulnerability audit, tests, build. If everything
+# passes and HEAD is on the remote, sets a green `signoff` status via
+# gh-signoff. See CONTRIBUTING.md.
+
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+failed=0
+
+heading() { printf '\n\033[%sm%s\033[0m\n' "$1" "$2"; }
+
+step() {
+  local title=$1
+  shift
+  heading "1;35" "$title"
+  heading "1;90" "$*"
+  "$@" || failed=1
+}
+
+# The linters are pinned in tools/go.mod, apart from the program's own modules.
+tool() { go tool -modfile=tools/go.mod "$@"; }
+
+step "Style: format" tool golangci-lint fmt --diff
+step "Style: lint" tool golangci-lint run
+step "Modules: tidy" go mod tidy -diff
+step "Security: govulncheck" tool govulncheck ./...
+step "Tests" go test -race ./...
+step "Build" go build -o /dev/null ./cmd/agent-inbox
+
+# A fork's PR checked out with `gh pr checkout` has no @{push}, so ask
+# GitHub whether HEAD is the PR's head instead.
+head_is_pushed() {
+  git merge-base --is-ancestor HEAD '@{push}' 2>/dev/null ||
+    [ "$(gh pr view --json headRefOid --jq .headRefOid 2>/dev/null)" = "$(git rev-parse HEAD)" ]
+}
+
+if [ "$failed" -ne 0 ]; then
+  heading "1;31" "Signoff: CI failed. Do not merge."
+  exit 1
+elif head_is_pushed; then
+  step "Signoff: All systems go. Ready for merge." gh signoff
+  exit "$failed"
+else
+  heading "1;90" "Signoff: skipped, HEAD is not on the remote yet."
+fi

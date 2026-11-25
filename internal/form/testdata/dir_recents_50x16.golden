@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌─ Prompt ─────────────────────────────────────┐ 
+ │ fix it                                       │ 
+ └──────────────────────────────────────────────┘ 
+   Harness      [claude]  codex   agy             
+   Name         fix-it                            
+ ▶ Directory    ~/code/app                        
+                recent                            
+                ~/code/agent-inbox  git           
+                ~/notes                   +3 more 
+   Rex session  [work]  side projects  …          
+   Model        [default]  fable   opus  …        
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  acceptEdits   auto  …  
+   Worktree      no  [yes]                        
+ ⇥ next  ↓ browse  ^U recent  ^S start            

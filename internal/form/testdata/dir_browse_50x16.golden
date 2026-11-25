@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌─ Prompt ─────────────────────────────────────┐ 
+ │ fix it                                       │ 
+ │                                              │ 
+ └──────────────────────────────────────────────┘ 
+   Harness      [claude]  codex   agy             
+   Name         fix-it                            
+ ▶ Directory    ~/code/                           
+                ..                                
+                agent-inbox/  git                 
+              ▶ app/          git         +3 more 
+   Rex session  [work]  side projects  …          
+   Model        [default]  fable   opus  …        
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  acceptEdits   auto  …  
+ ⏎ open  ← parent  ⇥ pick  esc back  ^S start     

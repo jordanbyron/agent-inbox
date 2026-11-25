@@ -1,0 +1,69 @@
+# Contributing
+
+## Setup
+
+```sh
+asdf install                                  # the Go in .tool-versions
+gh extension install basecamp/gh-signoff
+```
+
+The linters are Go programs pinned in `tools/go.mod`. The first `bin/ci`
+builds them, which takes a minute; after that they come from Go's build cache.
+
+## Running from a checkout
+
+```sh
+go run ./cmd/agent-inbox version
+```
+
+Against the live Rex server, keep your real state and config out of it:
+
+```sh
+export XDG_STATE_HOME=$(mktemp -d) XDG_CONFIG_HOME=$(mktemp -d)
+go build -o /tmp/agent-inbox ./cmd/agent-inbox
+/tmp/agent-inbox                              # starts a watcher on the scratch state
+pkill -f '/tmp/agent-inbox watch'             # stop it when you're done
+```
+
+The watcher outlives the command that started it, and a list opened in a
+Rex pane runs in the login shell's environment, without these variables.
+
+To draw the list with no Rex at all:
+
+```sh
+go run ./cmd/agent-inbox list --fixture internal/snapshot/testdata/fixture.json
+```
+
+Two test suites talk to real services and are skipped unless asked for:
+
+```sh
+AGENT_INBOX_LIVE_REX=1 go test ./internal/rex  # a throwaway Rex session
+AGENT_INBOX_LIVE_GH=1 go test ./internal/pulls # this repository on GitHub
+```
+
+## Local CI and signoff
+
+There's no hosted CI. `bin/ci` runs on your machine and reports back with
+[gh-signoff](https://github.com/basecamp/gh-signoff).
+
+1. Push your branch and open the PR.
+2. Run `bin/ci`. It checks formatting, lints, checks `go.mod` is tidy, audits
+   dependencies with `govulncheck`, runs the tests with the race detector and
+   builds the binary.
+3. If every step passes and HEAD is on the remote, it runs `gh signoff`,
+   which sets a green `signoff` status on the PR.
+4. Merge.
+
+With HEAD not pushed yet, `bin/ci` skips the signoff and says so, so it's
+fine to run mid-work. gh-signoff also refuses a dirty working tree, since it
+can't vouch for commits that don't match what you tested.
+
+While iterating:
+
+```sh
+go test ./...
+go test ./internal/cli -run TestVersion       # one test
+go tool -modfile=tools/go.mod golangci-lint fmt        # fix formatting
+go tool -modfile=tools/go.mod golangci-lint run --fix  # lint, fixing what it can
+gh signoff status                             # is HEAD signed off?
+```

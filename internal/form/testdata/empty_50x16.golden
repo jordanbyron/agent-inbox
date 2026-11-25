@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌▶ Prompt ─────────────────────────────────────┐ 
+ │  What should this agent do?                  │ 
+ │                                              │ 
+ │                                              │ 
+ └──────────────────────────────────────────────┘ 
+                                                  
+   Harness      [claude]  codex   agy             
+   Name         agent                             
+   Directory    ~/code/app                        
+   Rex session  [work]  side projects  …          
+   Model        [default]  fable   opus  …        
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  acceptEdits   auto  …  
+   Worktree      no  [yes]                        
+ ⏎ newline  ^V image  ^S start  ^O start & show   

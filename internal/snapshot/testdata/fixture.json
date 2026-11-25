@@ -1,0 +1,413 @@
+{
+  "written_at": 1789600000,
+  "body": {
+    "version": "v0.1.0-fixture",
+    "sections": [
+      {
+        "name": "pinned",
+        "rows": [
+          {
+            "key": "a7f3c2",
+            "label": "release notes for v2",
+            "harness": "claude",
+            "status": "done",
+            "detail": "Drafted notes for 14 merged pull requests",
+            "dir": "/home/dev/code/app",
+            "rex_session": "s1",
+            "rex_window": "w1",
+            "rex_block": "b1",
+            "read": true,
+            "pinned_at": 1789590000,
+            "state_since": 1789599100,
+            "began": 1789560000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/app/pull/912",
+                "number": 912,
+                "title": "Release notes for v2",
+                "state": "OPEN",
+                "health": "CHANGES_REQUESTED",
+                "source": "branch"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "needs_you",
+        "rows": [
+          {
+            "key": "b81e04",
+            "label": "fix the login redirect loop",
+            "harness": "claude",
+            "status": "blocked",
+            "kind": "permission",
+            "detail": "Bash: rm -rf node_modules && npm ci",
+            "dir": "/home/dev/code/app",
+            "rex_session": "s1",
+            "rex_window": "w2",
+            "rex_block": "b2",
+            "unread": true,
+            "state_since": 1789599988,
+            "began": 1789598000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/app/pull/901",
+                "number": 901,
+                "title": "Stop the login redirect loop",
+                "state": "OPEN",
+                "health": "FAILING",
+                "source": "branch"
+              }
+            ]
+          },
+          {
+            "key": "c4d9aa",
+            "label": "migrate billing to the new queue",
+            "harness": "claude",
+            "status": "done",
+            "detail": "Split the work across three agents",
+            "dir": "/home/dev/code/billing",
+            "rex_session": "s2",
+            "rex_window": "w3",
+            "rex_block": "b3",
+            "read": true,
+            "state_since": 1789597000,
+            "began": 1789590000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/billing/pull/77",
+                "number": 77,
+                "title": "Move billing jobs to the new queue",
+                "state": "DRAFT",
+                "source": "branch"
+              }
+            ]
+          },
+          {
+            "key": "c4d9ab",
+            "label": "queue names",
+            "harness": "codex",
+            "status": "blocked",
+            "kind": "question",
+            "detail": "Which queue should invoices use?",
+            "dir": "/home/dev/code/billing/.worktrees/queue-names",
+            "rex_session": "s2",
+            "rex_window": "w4",
+            "rex_block": "b4",
+            "unread": true,
+            "state_since": 1789599700,
+            "began": 1789591000,
+            "launched": true,
+            "parent": "c4d9aa"
+          },
+          {
+            "key": "c4d9ad",
+            "label": "audit the old cron jobs",
+            "harness": "claude",
+            "status": "done",
+            "dir": "/home/dev/code/billing/.worktrees/cron-audit",
+            "state_since": 1789594000,
+            "began": 1789591500,
+            "launched": true,
+            "parent": "c4d9aa",
+            "closed": true
+          },
+          {
+            "key": "c4d9ac",
+            "label": "port the retry worker",
+            "harness": "claude",
+            "status": "working",
+            "detail": "Running go test ./worker/...",
+            "dir": "/home/dev/code/billing/.worktrees/retry-worker",
+            "rex_session": "s2",
+            "rex_window": "w5",
+            "rex_block": "b5",
+            "state_since": 1789599940,
+            "began": 1789592000,
+            "launched": true,
+            "parent": "c4d9ab"
+          },
+          {
+            "key": "d0e1f2",
+            "label": "nightly import",
+            "harness": "agy",
+            "status": "error",
+            "detail": "exit status 1: connection refused",
+            "dir": "/home/dev/code/etl",
+            "rex_session": "s1",
+            "rex_window": "w6",
+            "rex_block": "b6",
+            "unread": true,
+            "state_since": 1789596400,
+            "began": 1789580000,
+            "launched": true
+          },
+          {
+            "key": "e5f6a7",
+            "label": "sync the team calendar",
+            "harness": "claude",
+            "status": "blocked",
+            "kind": "auth",
+            "detail": "Sign in to Google to continue",
+            "dir": "/home/dev/code/calendar",
+            "rex_session": "s1",
+            "rex_window": "w7",
+            "rex_block": "b7",
+            "unread": true,
+            "state_since": 1789592800,
+            "began": 1789592000,
+            "launched": true
+          }
+        ]
+      },
+      {
+        "name": "active",
+        "rows": [
+          {
+            "key": "blk-41",
+            "label": "claude",
+            "harness": "claude",
+            "status": "starting",
+            "dir": "/home/dev/scratch",
+            "rex_session": "s3",
+            "rex_window": "w10",
+            "rex_block": "blk-41",
+            "state_since": 1789599995,
+            "began": 1789599995
+          },
+          {
+            "key": "f1a2b3",
+            "label": "Explain why the flaky spec in spec/poller_spec.rb times out on CI under load",
+            "harness": "claude",
+            "status": "working",
+            "detail": "Reading spec/poller_spec.rb",
+            "dir": "/home/dev/code/claude-inbox",
+            "rex_session": "s1",
+            "rex_window": "w8",
+            "rex_block": "b8",
+            "state_since": 1789599950,
+            "began": 1789599000,
+            "launched": true
+          },
+          {
+            "key": "f4c5d6",
+            "label": "deploy preview",
+            "alias": "deploy preview",
+            "harness": "codex",
+            "status": "working",
+            "waiting_on_work": true,
+            "detail": "Waiting on 2 background shells",
+            "dir": "/home/dev/code/site",
+            "rex_session": "s1",
+            "rex_window": "w9",
+            "rex_block": "b9",
+            "state_since": 1789599400,
+            "began": 1789598500,
+            "launched": true
+          },
+          {
+            "key": "a0b1c2",
+            "label": "🚀 launch checklist for the mobile beta",
+            "harness": "claude",
+            "status": "done",
+            "detail": "Checklist written to docs/beta.md",
+            "dir": "/home/dev/code/mobile",
+            "rex_session": "s1",
+            "rex_window": "w11",
+            "rex_block": "b11",
+            "unread": true,
+            "state_since": 1789599880,
+            "began": 1789597000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/mobile/pull/230",
+                "number": 230,
+                "title": "Beta launch checklist",
+                "state": "OPEN",
+                "health": "CONFLICTING",
+                "source": "branch"
+              }
+            ]
+          },
+          {
+            "key": "a3b4c5",
+            "label": "bump dependencies",
+            "harness": "claude",
+            "status": "done",
+            "dir": "/home/dev/code/app",
+            "rex_session": "s1",
+            "rex_window": "w12",
+            "rex_block": "b12",
+            "read": true,
+            "state_since": 1789588000,
+            "began": 1789586000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/app/pull/940",
+                "number": 940,
+                "title": "Bump dependencies",
+                "state": "MERGED",
+                "resolved_at": 1789590000,
+                "source": "branch"
+              },
+              {
+                "url": "https://github.com/acme/app/pull/941",
+                "number": 941,
+                "title": "Bump dev dependencies",
+                "state": "OPEN",
+                "health": "CLEAN",
+                "source": "branch"
+              }
+            ]
+          },
+          {
+            "key": "a6b7c8",
+            "label": "triage github issues",
+            "harness": "codex",
+            "status": "idle",
+            "dir": "/home/dev/code/app",
+            "rex_session": "s1",
+            "rex_window": "w13",
+            "rex_block": "b13",
+            "read": true,
+            "state_since": 1789570000,
+            "began": 1789560000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/app/pull/77",
+                "source": "capture"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "working",
+        "rows": [
+          {
+            "key": "b9c0d1",
+            "label": "index the monorepo",
+            "harness": "claude",
+            "status": "working",
+            "detail": "Indexed 12,400 of 30,000 files",
+            "dir": "/home/dev/code/monorepo",
+            "rex_session": "s1",
+            "rex_window": "w14",
+            "rex_block": "b14",
+            "state_since": 1789599000,
+            "began": 1789598800,
+            "launched": true
+          }
+        ]
+      },
+      {
+        "name": "snoozed",
+        "rows": [
+          {
+            "key": "c2d3e4",
+            "label": "review the API feedback",
+            "harness": "claude",
+            "status": "done",
+            "dir": "/home/dev/code/api",
+            "rex_session": "s1",
+            "rex_window": "w15",
+            "rex_block": "b15",
+            "read": true,
+            "pinned_at": 1789500000,
+            "wake_at": 1789600840,
+            "state_since": 1789580000,
+            "began": 1789570000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/api/pull/55",
+                "number": 55,
+                "title": "Paginate the list endpoints",
+                "state": "OPEN",
+                "health": "CLEAN",
+                "source": "branch"
+              }
+            ]
+          },
+          {
+            "key": "c5d6e7",
+            "label": "long refactor of the session store",
+            "harness": "codex",
+            "status": "idle",
+            "dir": "/home/dev/code/app",
+            "rex_session": "s1",
+            "rex_window": "w16",
+            "rex_block": "b16",
+            "read": true,
+            "until_woken": true,
+            "state_since": 1789400000,
+            "began": 1789300000,
+            "launched": true
+          }
+        ]
+      },
+      {
+        "name": "settled",
+        "rows": [
+          {
+            "key": "d8e9f0",
+            "label": "update the README",
+            "harness": "claude",
+            "status": "done",
+            "dir": "/home/dev/code/app",
+            "state_since": 1789580000,
+            "began": 1789570000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/app/pull/950",
+                "number": 950,
+                "title": "Update the README",
+                "state": "MERGED",
+                "resolved_at": 1789579000,
+                "source": "branch"
+              }
+            ]
+          },
+          {
+            "key": "d1e2f3",
+            "label": "spike: websocket client",
+            "harness": "codex",
+            "status": "idle",
+            "dir": "/home/dev/code/rex-client",
+            "state_since": 1789300000,
+            "began": 1789200000,
+            "launched": true,
+            "pull_requests": [
+              {
+                "url": "https://github.com/acme/rex-client/pull/3",
+                "number": 3,
+                "title": "Spike a websocket client",
+                "state": "CLOSED",
+                "resolved_at": 1789290000,
+                "source": "linked"
+              }
+            ]
+          },
+          {
+            "key": "d4e5f6",
+            "label": "flaky deploy script",
+            "harness": "agy",
+            "status": "error",
+            "dir": "/home/dev/code/ops",
+            "state_since": 1789100000,
+            "began": 1789000000,
+            "launched": true
+          }
+        ]
+      }
+    ]
+  }
+}
