@@ -22,6 +22,7 @@ func Builtins() Set {
 				Effort:      efforts,
 				Permissions: []string{"default", "acceptEdits", "auto", "plan", "bypassPermissions"},
 			},
+			Titles: ClaudeTitles{},
 		},
 		{
 			Name: "codex",

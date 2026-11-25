@@ -6,7 +6,7 @@
  └──────────────────────────────────────────────┘ 
                                                   
  ▶ Harness       claude  [codex]  agy             
-   Name         agent                             
+   Name         Agent                             
    Directory    ~/code/app                        
    Rex session  [work]  side projects  …          
    Model        [default]  gpt-6-luna  …          

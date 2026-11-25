@@ -1,6 +1,7 @@
 package verbs
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -74,6 +75,12 @@ func (in *Inbox) Start(ctx context.Context, req StartRequest) (Agent, error) {
 	if r.TakesSessionID() {
 		rec.SessionID = recipe.NewSessionID()
 	}
+	// A harness that titles its own conversations does it only when not
+	// given a name, so it gets one only when the user typed it.
+	harnessName := rec.Name
+	if r.Titles != nil {
+		harnessName = req.Name
+	}
 
 	id, err := in.addRecord(rec)
 	if err != nil {
@@ -107,7 +114,7 @@ func (in *Inbox) Start(ctx context.Context, req StartRequest) (Agent, error) {
 		SessionID: sessionID,
 		Command: r.StartArgs(recipe.Values{
 			SessionID:   rec.SessionID,
-			Name:        rec.Name,
+			Name:        harnessName,
 			Model:       req.Model,
 			Effort:      req.Effort,
 			Permissions: req.Permissions,
@@ -192,7 +199,8 @@ func (in *Inbox) parent(ctx context.Context) (string, error) {
 	if !ok {
 		return "", nil
 	}
-	view, err := in.Rex.View(ctx, pane.SessionID)
+	// Rex takes the block for its session when REX_SESSION is unset.
+	view, err := in.Rex.View(ctx, cmp.Or(pane.SessionID, pane.BlockID))
 	if err != nil {
 		return "", fmt.Errorf("reading the Rex session this runs in: %w", err)
 	}

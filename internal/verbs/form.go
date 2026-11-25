@@ -25,7 +25,10 @@ func (in *Inbox) OpenForm(ctx context.Context) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening the form: %w", err)
 	}
-	pane, inRex := rex.PaneFromEnv(in.Getenv)
+	pane, inRex, err := rex.FindPane(ctx, in.Rex, in.Getenv)
+	if err != nil {
+		return nil, fmt.Errorf("opening the form: %w", err)
+	}
 	if !inRex {
 		cmd := exec.CommandContext(ctx, in.Form[0], in.Form[1:]...)
 		cmd.Dir = dir

@@ -14,7 +14,7 @@
  └────────────────────────────────────────────────────────────────────────────────────────────────┘ 
                                                                                                     
    Harness      [claude]  codex   agy                                                               
-   Name         step-1-and-then                                                                     
+   Name         Step 1: and then some more words and then some…                                     
    Directory    ~/code/app                                                                          
    Rex session  [work]  side projects   new session                                                 
    Model        [default]  fable   opus   sonnet   haiku                                            

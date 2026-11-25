@@ -25,6 +25,7 @@ func fullState() *state.State {
 				Harness:    "claude",
 				SessionID:  "0b6c7f9e",
 				Name:       "fix the flaky spec",
+				Title:      "Fix the flaky billing spec",
 				Dir:        "/src/app",
 				Worktree:   "/src/app/.worktrees/fix-the-flaky-spec",
 				Branch:     "fix-the-flaky-spec",

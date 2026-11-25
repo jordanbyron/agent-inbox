@@ -99,21 +99,21 @@ func TestTheVerbsEndToEnd(t *testing.T) {
 	for key := range st.Records {
 		id = key
 	}
-	require.Equal(t, "started fix-the-login ("+id+")", out)
+	require.Equal(t, "started Fix the login ("+id+")", out)
 	require.Len(t, f.windows(t), 1)
-	require.Equal(t, "fix-the-login", f.windows(t)[0].Label)
+	require.Equal(t, "Fix the login", f.windows(t)[0].Label)
 	require.Equal(t, verbs.BlockLabel(id), f.windows(t)[0].Blocks[0].Label)
 
-	require.Equal(t, "settled fix-the-login", f.must(t, "settle", id))
+	require.Equal(t, "settled Fix the login", f.must(t, "settle", id))
 	require.Empty(t, f.windows(t))
 
-	require.Equal(t, "restored fix-the-login", f.must(t, "restore", id))
+	require.Equal(t, "restored Fix the login", f.must(t, "restore", id))
 	require.Len(t, f.windows(t), 1)
 	require.Equal(t, []string{"fake", "--resume", st.Records[id].SessionID}, f.rex.Started()[1].Command)
 
-	require.Equal(t, "snoozed fix-the-login until Mon Nov 23 11:00", f.must(t, "snooze", id, "1h"))
-	require.Equal(t, "woke fix-the-login", f.must(t, "wake", id))
-	require.Equal(t, "pinned fix-the-login", f.must(t, "pin", id))
+	require.Equal(t, "snoozed Fix the login until Mon Nov 23 11:00", f.must(t, "snooze", id, "1h"))
+	require.Equal(t, "woke Fix the login", f.must(t, "wake", id))
+	require.Equal(t, "pinned Fix the login", f.must(t, "pin", id))
 	require.Equal(t, "aliased "+id+" to login", f.must(t, "alias", id, "login"))
 	require.Equal(t, "linked login to https://github.com/o/r/pull/4", f.must(t, "link", id, "o/r#4"))
 	require.Equal(t, "cleared the link of login", f.must(t, "link", id, ""))
@@ -156,10 +156,10 @@ func TestTheVerbsFindTheAgentByBlock(t *testing.T) {
 	f.must(t, "new", "--prompt", "hi", "--cwd", t.TempDir(), "--session", "work")
 	block := f.windows(t)[0].Blocks[0].ID
 
-	require.Equal(t, "pinned hi", f.must(t, "pin", "--block", block))
+	require.Equal(t, "pinned Hi", f.must(t, "pin", "--block", block))
 
 	f.env["REX_SESSION"], f.env["REX_BLOCK"] = f.session, block
-	require.Equal(t, "snoozed hi until woken", f.must(t, "snooze", "until-woken"))
+	require.Equal(t, "snoozed Hi until woken", f.must(t, "snooze", "until-woken"))
 	require.Equal(t, "aliased "+strings.TrimPrefix(f.windows(t)[0].Blocks[0].Label, verbs.LabelPrefix)+" to me", f.must(t, "alias", "me"))
 }
 
@@ -169,14 +169,14 @@ func TestOpen(t *testing.T) {
 	block := f.windows(t)[0].Blocks[0].ID
 	id := strings.TrimPrefix(f.windows(t)[0].Blocks[0].Label, verbs.LabelPrefix)
 
-	require.Equal(t, "showing hi", f.must(t, "open", id))
-	require.Equal(t, "showing hi", f.must(t, "open", "--block", block))
+	require.Equal(t, "showing Hi", f.must(t, "open", id))
+	require.Equal(t, "showing Hi", f.must(t, "open", "--block", block))
 	f.env["REX_SESSION"], f.env["REX_BLOCK"] = f.session, block
-	require.Equal(t, "showing hi", f.must(t, "open"))
+	require.Equal(t, "showing Hi", f.must(t, "open"))
 	require.Equal(t, []string{block, block, block}, f.rex.Shown())
 
 	f.must(t, "settle", id)
-	require.Equal(t, "showing hi", f.must(t, "open", id), "a settled agent is restored to be shown")
+	require.Equal(t, "showing Hi", f.must(t, "open", id), "a settled agent is restored to be shown")
 	require.Len(t, f.windows(t), 1)
 	require.Len(t, f.rex.Shown(), 4)
 
@@ -187,6 +187,19 @@ func TestOpen(t *testing.T) {
 func TestNewStartsInThePanesSession(t *testing.T) {
 	f := newFixture(t)
 	f.env["REX_SESSION"], f.env["REX_BLOCK"] = f.session, "block:elsewhere"
+
+	f.must(t, "new", "--prompt", "hi", "--cwd", t.TempDir())
+
+	require.Equal(t, f.session, f.rex.Started()[0].SessionID)
+}
+
+func TestNewFindsThePanesSessionFromItsBlock(t *testing.T) {
+	f := newFixture(t)
+	window, err := f.rex.AddWindow(f.session, "shell")
+	require.NoError(t, err)
+	pane, err := f.rex.AddBlock(f.session, window, "")
+	require.NoError(t, err)
+	f.env["REX_BLOCK"] = pane
 
 	f.must(t, "new", "--prompt", "hi", "--cwd", t.TempDir())
 

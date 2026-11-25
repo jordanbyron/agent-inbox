@@ -532,6 +532,26 @@ func (f *Fake) CloseWindow(ctx context.Context, sessionID, windowID string) erro
 	return nil
 }
 
+// SetWindowLabel relabels a window.
+func (f *Fake) SetWindowLabel(ctx context.Context, sessionID, windowID, label string) error {
+	if err := f.reachable(ctx); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, err := f.session(sessionID)
+	if err != nil {
+		return err
+	}
+	w, err := s.window(windowID)
+	if err != nil {
+		return err
+	}
+	w.label = label
+	f.viewChanged(s)
+	return nil
+}
+
 // FocusBlock records the request, focuses the block, and makes its window active.
 func (f *Fake) FocusBlock(ctx context.Context, sessionID, blockID string) error {
 	if err := f.reachable(ctx); err != nil {
@@ -735,10 +755,19 @@ func (f *Fake) viewChanged(s *session) {
 	f.emit(rex.Event{Type: rex.EventViewChanged, SessionID: s.id, Revision: s.revision})
 }
 
+// session finds a session by id or label, or, as Rex does, by the id of a
+// block in it.
 func (f *Fake) session(id string) (*session, error) {
 	for _, s := range f.sessions {
 		if s.id == id || s.label == id {
 			return s, nil
+		}
+		for _, w := range s.windows {
+			for _, b := range w.blocks {
+				if b.id == id {
+					return s, nil
+				}
+			}
 		}
 	}
 	return nil, notFound("session", id)

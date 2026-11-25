@@ -49,8 +49,8 @@ func TestDeleteRemovesTheWholeFamily(t *testing.T) {
 	require.Empty(t, st.Records)
 	require.Empty(t, st.Entries)
 	require.Empty(t, st.PullRequests)
-	require.NoDirExists(t, filepath.Join(repo, ".worktrees", "the-root"))
-	require.NoDirExists(t, filepath.Join(repo, ".worktrees", "the-kid"))
+	require.NoDirExists(t, filepath.Join(repo, ".worktrees", "root"))
+	require.NoDirExists(t, filepath.Join(repo, ".worktrees", "kid"))
 	require.Equal(t, "main", git(t, repo, "branch", "--format=%(refname:short)"))
 }
 
@@ -79,7 +79,7 @@ func TestDeleteRefusesAWorktreeWithWorkInIt(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			w := newWorld(t)
 			repo, root, kid := startFamily(t, w)
-			kidPath := filepath.Join(repo, ".worktrees", "the-kid")
+			kidPath := filepath.Join(repo, ".worktrees", "kid")
 			c.make(t, kidPath)
 			before := w.state(t)
 
@@ -88,7 +88,7 @@ func TestDeleteRefusesAWorktreeWithWorkInIt(t *testing.T) {
 			require.ErrorContains(t, err, "worktree "+kidPath+" "+c.want)
 			require.Equal(t, before, w.state(t))
 			require.Equal(t, []string{verbs.BlockLabel(root), verbs.BlockLabel(kid)}, w.labels(t))
-			require.DirExists(t, filepath.Join(repo, ".worktrees", "the-root"))
+			require.DirExists(t, filepath.Join(repo, ".worktrees", "root"))
 			require.DirExists(t, kidPath)
 		})
 	}

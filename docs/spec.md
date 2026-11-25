@@ -229,7 +229,17 @@ session, Model, Effort, Permissions and Worktree.
   the path is edited.
 - `Tab` moves between fields, `Ctrl-S` starts the agent and `Ctrl-O` starts
   it and shows its tab.
-- An empty Name is filled from the prompt's first words. No model is asked.
+- An empty Name is filled from the prompt's first sentence, cut at a word to
+  fit a tab. No model is asked. The name is for people: it titles the tab
+  and the inbox row until the harness gives a title of its own, and the
+  worktree and branch use a kebab-case slug of it without filler words
+  ("Fix the login bug on Safari" gives `fix-login-bug-safari`).
+- A harness that titles its own conversations, as Claude Code does, is
+  passed the name only when one was typed, since Claude Code titles a
+  session only when started without `--name`. The watcher reads the title
+  from the transcript every 30 seconds into the record's `title`, and the
+  row takes it; so does the tab, unless it was renamed by hand. A
+  `/rename` inside Claude Code arrives the same way.
 
 Every field is also a flag, and with `--prompt` given no form opens. That is
 how a script or another agent starts one:
@@ -243,8 +253,8 @@ nothing is left half made:
 
 1. Write the record.
 2. Create the worktree: `git worktree add` at the path template, on a new
-   branch named for the agent, from `origin`'s default branch after a fetch
-   (`worktree.base = "head"` branches from the checkout's HEAD instead). A
+   branch named for the agent's slug, from `origin`'s default branch after a
+   fetch (`worktree.base = "head"` branches from the checkout's HEAD instead). A
    taken name gets `-2`. A path inside the repository is added to
    `.git/info/exclude`, so nothing is committed to ignore it.
 3. Start the recipe's command in a new tab of the chosen session, in that

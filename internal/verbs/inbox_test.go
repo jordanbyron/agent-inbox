@@ -91,6 +91,13 @@ func newWorld(t *testing.T) *world {
 			ResumeLatest: []string{"late", "resume", "--last"},
 			Sessions:     w.finder,
 		},
+		{
+			Name:   "titled",
+			App:    "titled",
+			Start:  []string{"titled", "--name", "{name}", "--", "{prompt}"},
+			Resume: []string{"titled", "--resume"},
+			Titles: recipe.ClaudeTitles{},
+		},
 	}
 	w.inbox = &verbs.Inbox{
 		Store:    w.store,

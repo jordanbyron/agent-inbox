@@ -32,7 +32,10 @@ const (
 	// branchScanEvery is how often a launched agent's worktree is checked
 	// for new branches between turns.
 	branchScanEvery = 2 * time.Minute
-	reapEvery       = 10 * time.Minute
+	// titleScanEvery is how often a launched agent's harness is asked for
+	// the title it has given the conversation.
+	titleScanEvery = 30 * time.Second
+	reapEvery      = 10 * time.Minute
 	// serverProbes is how many times running, a tick apart, the server
 	// must fail to answer before the watcher takes it as gone. A sleep and
 	// wake or a hiccup ends the event stream too.
@@ -55,7 +58,9 @@ type Options struct {
 	Clock Clock
 	// StateDir is the Rex server's state directory, from state.Dir.
 	StateDir string
-	Config   config.Config
+	// Home holds the harnesses' own files, where their titles are read.
+	Home   string
+	Config config.Config
 	// Version is this binary's, written into the lock and the snapshot.
 	Version string
 	// Log is where the watcher says what it did; nil discards it.

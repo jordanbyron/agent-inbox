@@ -26,12 +26,13 @@ type Worktree struct {
 const maxSuffix = 100
 
 // Create makes a worktree for the agent called name, in the repository
-// that holds dir, as cfg says. A taken branch or path gets -2, -3 and so
-// on. On failure it leaves nothing behind.
+// that holds dir, as cfg says, with {name} filled in by Slug(name). A taken
+// branch or path gets -2, -3 and so on. On failure it leaves nothing behind.
 func Create(ctx context.Context, git Git, dir, name string, cfg config.Worktree) (Worktree, error) {
 	if name == "" {
 		return Worktree{}, errors.New("creating a worktree: the agent has no name")
 	}
+	name = Slug(name)
 	repo, err := findRepo(ctx, git, dir)
 	if err != nil {
 		return Worktree{}, fmt.Errorf("creating a worktree: %w", err)
