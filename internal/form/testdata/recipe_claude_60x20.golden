@@ -7,7 +7,7 @@
  └────────────────────────────────────────────────────────┘ 
                                                             
  ▶ Harness      [claude]  codex   agy                       
-   Name         agent                                       
+   Name         Agent                                       
    Directory    ~/code/app                                  
    Rex session  [work]  side projects   new session         
    Model        [default]  fable   opus   sonnet   haiku    

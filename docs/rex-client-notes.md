@@ -17,6 +17,12 @@ revision 10, unless it says otherwise.
   first.
 - A pane also gets `REX_SESSION` and `REX_BLOCK` as ids (`session:<uuid>`,
   `block:<uuid>`) and `REX_SERVER` as a `unix://` URL of the socket.
+- From 0.1.0-preview.23 (API revision 19, seen 2026-11-25) a pane gets
+  `REX_BLOCK` but no `REX_SESSION`. `-s` takes a block id and attaches to
+  the session holding it, and `session.view` on it returns the real
+  `session_id`, which is how `rex.FindPane` learns the session.
+- `session.set_window_label` relabels a tab, up to 128 characters; an empty
+  label restores the default made from the window's id.
 - `server.status` gives `host_id`, which stays the same across restarts, and
   `instance_id`, which is new for every server process.
 

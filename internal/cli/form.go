@@ -36,7 +36,11 @@ func newFormCommand(open inboxOpener) *cobra.Command {
 				return err
 			}
 			req := verbs.StartRequest{Dir: ".", Worktree: inbox.Config.Worktree.Default}
-			if pane, ok := rex.PaneFromEnv(inbox.Getenv); ok {
+			pane, ok, err := rex.FindPane(cmd.Context(), inbox.Rex, inbox.Getenv)
+			if err != nil {
+				return err
+			}
+			if ok {
 				req.Session = pane.SessionID
 			}
 			// The JSON goes to stdout, so it can be piped while the form shows.

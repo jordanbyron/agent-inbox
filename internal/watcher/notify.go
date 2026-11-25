@@ -61,7 +61,7 @@ func moments(agents []agent, st *state.State, now time.Time) map[string]moment {
 }
 
 func agentLabel(a agent, entry triage.Entry) string {
-	return label(entry.Alias, a.record.Name, a.status.title, a.dir(), a.harness)
+	return label(entry.Alias, a.record.Label(), a.status.title, a.dir(), a.harness)
 }
 
 func whatItNeeds(a agent, row triage.Row) string {

@@ -208,7 +208,7 @@ func family(st *state.State, top agent) []agent {
 func describe(st *state.State, a agent) Agent {
 	name := st.Entries[a.key].Alias
 	if name == "" {
-		name = a.record.Name
+		name = a.record.Label()
 	}
 	if !a.launched && name == "" {
 		name = a.row.Label

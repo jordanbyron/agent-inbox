@@ -323,7 +323,7 @@ func TestRexSession(t *testing.T) {
 func TestName(t *testing.T) {
 	t.Run("shows the name it would get from the prompt", func(t *testing.T) {
 		s := newScreen(t, 100, 30).typing("Fix the flaky spec in billing")
-		require.Contains(t, s.lineWith("Name"), "fix-the-flaky-spec")
+		require.Contains(t, s.lineWith("Name"), "Fix the flaky spec in billing")
 		s.press("ctrl+s")
 		require.Empty(t, s.result().Name, "the caller fills an empty name")
 	})

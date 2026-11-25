@@ -180,6 +180,7 @@ type harness struct {
 	gh       *fakeGH
 	clock    *manualClock
 	dir      string
+	home     string
 	store    *state.Store
 	log      *syncBuffer
 	done     chan error
@@ -210,6 +211,7 @@ func newHarness(t *testing.T) *harness {
 		gh:    newFakeGH(),
 		clock: &manualClock{now: t0},
 		dir:   dir,
+		home:  t.TempDir(),
 		store: state.New(dir),
 		log:   &syncBuffer{},
 		cfg:   config.Default(),
@@ -227,6 +229,7 @@ func (h *harness) start() {
 		Git:      worktree.ExecGit{},
 		Clock:    h.clock,
 		StateDir: h.dir,
+		Home:     h.home,
 		Config:   h.cfg,
 		Version:  "v-test",
 		Log:      slog.New(slog.NewTextHandler(h.log, nil)),

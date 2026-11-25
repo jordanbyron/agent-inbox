@@ -129,7 +129,11 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 				req.Worktree = inbox.Config.Worktree.Default
 			}
 			if !cmd.Flags().Changed("session") {
-				if pane, ok := rex.PaneFromEnv(inbox.Getenv); ok {
+				pane, ok, err := rex.FindPane(cmd.Context(), inbox.Rex, inbox.Getenv)
+				if err != nil {
+					return err
+				}
+				if ok {
 					req.Session = pane.SessionID
 				}
 			}

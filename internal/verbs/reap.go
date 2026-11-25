@@ -26,7 +26,7 @@ func (in *Inbox) DeleteFamily(ctx context.Context, key string) error {
 	}
 	for _, m := range family(st, agent{key: key, launched: true, record: st.Records[key]}) {
 		if _, running := all.placeOf(m); running {
-			return fmt.Errorf("not reaping %s: %s has a tab open", key, m.record.Name)
+			return fmt.Errorf("not reaping %s: %s has a tab open", key, m.record.Label())
 		}
 	}
 	_, _, err = in.Delete(ctx, Target{Key: key})

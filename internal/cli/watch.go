@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"fmt"
 	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -43,12 +45,17 @@ func newWatchCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("finding the home directory: %w", err)
+			}
 			return watcher.Run(ctx, watcher.Options{
 				Rex:      srv.rex,
 				GH:       pulls.GH{},
 				Git:      worktree.ExecGit{},
 				Clock:    watcher.SystemClock{},
 				StateDir: srv.dir,
+				Home:     home,
 				Config:   cfg,
 				Version:  version(),
 				Log:      logger,

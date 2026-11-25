@@ -28,7 +28,7 @@ func (in *Inbox) Restore(ctx context.Context, t Target) (Agent, error) {
 		return Agent{}, err
 	}
 	if _, running := all.placeOf(target); running {
-		return Agent{}, fmt.Errorf("%s is already running", target.record.Name)
+		return Agent{}, fmt.Errorf("%s is already running", target.record.Label())
 	}
 	return in.restore(ctx, target)
 }
@@ -68,20 +68,20 @@ func (in *Inbox) resume(ctx context.Context, a agent) (Agent, rex.Started, error
 	rec := a.record
 	r, ok := in.Config.Recipes.Named(rec.Harness)
 	if !ok {
-		return Agent{}, rex.Started{}, fmt.Errorf("restoring %s: no recipe for harness %q", rec.Name, rec.Harness)
+		return Agent{}, rex.Started{}, fmt.Errorf("restoring %s: no recipe for harness %q", rec.Label(), rec.Harness)
 	}
 	if _, err := os.Stat(rec.Dir); err != nil {
 		what := "directory"
 		if rec.Worktree != "" {
 			what = "worktree"
 		}
-		return Agent{}, rex.Started{}, fmt.Errorf("restoring %s: its %s %s is gone", rec.Name, what, rec.Dir)
+		return Agent{}, rex.Started{}, fmt.Errorf("restoring %s: its %s %s is gone", rec.Label(), what, rec.Dir)
 	}
 	sessionID := rec.SessionID
 	if sessionID == "" {
 		found, ok, err := r.FindSessionID(ctx, recipe.SessionQuery{Home: in.Home, Dir: rec.Dir, Began: rec.Began})
 		if err != nil {
-			return Agent{}, rex.Started{}, fmt.Errorf("restoring %s: %w", rec.Name, err)
+			return Agent{}, rex.Started{}, fmt.Errorf("restoring %s: %w", rec.Label(), err)
 		}
 		if ok {
 			sessionID = found
@@ -92,7 +92,7 @@ func (in *Inbox) resume(ctx context.Context, a agent) (Agent, rex.Started, error
 		Command:     r.ResumeArgs(recipe.Values{SessionID: sessionID, Name: rec.Name, Dir: rec.Dir}),
 		Dir:         rec.Dir,
 		BlockLabel:  BlockLabel(a.key),
-		WindowLabel: rec.Name,
+		WindowLabel: rec.Label(),
 	}
 	started, err := in.Rex.Start(ctx, opts)
 	// The session it ran in may have been closed since; a new one beats
@@ -102,7 +102,7 @@ func (in *Inbox) resume(ctx context.Context, a agent) (Agent, rex.Started, error
 		started, err = in.Rex.Start(ctx, opts)
 	}
 	if err != nil {
-		return Agent{}, rex.Started{}, fmt.Errorf("restoring %s in Rex: %w", rec.Name, err)
+		return Agent{}, rex.Started{}, fmt.Errorf("restoring %s in Rex: %w", rec.Label(), err)
 	}
 
 	var out Agent

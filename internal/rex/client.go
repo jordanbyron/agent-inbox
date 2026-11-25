@@ -306,6 +306,12 @@ func (c *Client) CloseWindow(ctx context.Context, sessionID, windowID string) er
 	return c.call(ctx, sessionID, "session.close_window", map[string]string{"window_id": windowID}, nil)
 }
 
+// SetWindowLabel relabels a window, which is its tab's title.
+func (c *Client) SetWindowLabel(ctx context.Context, sessionID, windowID, label string) error {
+	args := map[string]string{"window_id": windowID, "label": label}
+	return c.call(ctx, sessionID, "session.set_window_label", args, nil)
+}
+
 // FocusBlock focuses a block on the server and makes its window active.
 func (c *Client) FocusBlock(ctx context.Context, sessionID, blockID string) error {
 	return c.call(ctx, sessionID, "session.focus_block", map[string]string{"block_id": blockID}, nil)

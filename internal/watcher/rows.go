@@ -37,7 +37,7 @@ func rows(agents []agent, st *state.State, now time.Time, foldWorking bool) map[
 func snapshotRow(a agent, r triage.Row, prs []state.PullRequest) snapshot.Row {
 	row := snapshot.Row{
 		Key:           a.key,
-		Label:         label(r.Entry.Alias, a.record.Name, a.status.title, a.dir(), a.harness),
+		Label:         label(r.Entry.Alias, a.record.Label(), a.status.title, a.dir(), a.harness),
 		Alias:         r.Entry.Alias,
 		Harness:       a.harness,
 		Status:        r.Agent.Status,
@@ -62,8 +62,9 @@ func snapshotRow(a agent, r triage.Row, prs []state.PullRequest) snapshot.Row {
 	return row
 }
 
-// label is what a row is called: the alias you gave it, else the name it
-// was launched with, else the title it reports, else its directory's name.
+// label is what a row is called: the alias you gave it, else the harness's
+// title or the name it was launched with, else the title its status
+// reports, else its directory's name.
 // The harness's name is the last resort, so no row is blank.
 func label(alias, name, title, dir, harness string) string {
 	for _, l := range []string{alias, name, title} {

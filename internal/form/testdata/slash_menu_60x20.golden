@@ -9,7 +9,7 @@
      /unsplit  unsplit does things                          
                                                             
    Harness      [claude]  codex   agy                       
-   Name         un                                          
+   Name         /un                                         
    Directory    ~/code/app                                  
    Rex session  [work]  side projects   new session         
    Model        [default]  fable   opus   sonnet   haiku    

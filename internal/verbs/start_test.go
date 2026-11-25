@@ -46,27 +46,27 @@ func TestStartInAWorktree(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, a.Key, 6)
-	require.Equal(t, "fix-the-login-page", a.Name)
-	path := filepath.Join(repo, ".worktrees", "fix-the-login-page")
+	require.Equal(t, "Fix the login page", a.Name)
+	path := filepath.Join(repo, ".worktrees", "fix-login-page")
 	rec := w.state(t).Records[a.Key]
 	require.Equal(t, state.Record{
 		Harness:    "fake",
 		SessionID:  rec.SessionID,
-		Name:       "fix-the-login-page",
+		Name:       "Fix the login page",
 		Dir:        path,
 		Worktree:   path,
-		Branch:     "fix-the-login-page",
+		Branch:     "fix-login-page",
 		RexSession: w.session,
 		Began:      began.Add(time.Hour),
 	}, rec)
 	require.Len(t, rec.SessionID, 36)
-	require.Equal(t, "fix-the-login-page", git(t, path, "branch", "--show-current"))
+	require.Equal(t, "fix-login-page", git(t, path, "branch", "--show-current"))
 	require.Equal(t, []rex.StartOptions{{
 		SessionID:   w.session,
-		Command:     []string{"fake", "--session-id", rec.SessionID, "--name", "fix-the-login-page", "--model", "opus", "--", "Fix the login page"},
+		Command:     []string{"fake", "--session-id", rec.SessionID, "--name", "Fix the login page", "--model", "opus", "--", "Fix the login page"},
 		Dir:         path,
 		BlockLabel:  "agent-inbox:" + a.Key,
-		WindowLabel: "fix-the-login-page",
+		WindowLabel: "Fix the login page",
 	}}, w.rex.Started())
 	require.Empty(t, w.rex.Shown())
 	require.Empty(t, w.rex.Parked(), "no parked command, so nothing parked")
@@ -97,7 +97,7 @@ func TestStartKeepsTheAgentWhenTheInboxCantPark(t *testing.T) {
 
 	a, err := w.inbox.Start(t.Context(), verbs.StartRequest{Prompt: "hi", Dir: t.TempDir(), Session: w.session, Show: true})
 
-	require.ErrorContains(t, err, "parking the inbox beside hi: no room")
+	require.ErrorContains(t, err, "parking the inbox beside Hi: no room")
 	require.True(t, a.Launched)
 	require.Contains(t, w.state(t).Records, a.Key)
 	require.Len(t, w.rex.Shown(), 1, "the tab is shown all the same")
@@ -209,6 +209,39 @@ func TestStartRefuses(t *testing.T) {
 			_, err := w.inbox.Start(t.Context(), c.req)
 			require.ErrorContains(t, err, c.want)
 			require.Empty(t, w.state(t).Records)
+		})
+	}
+}
+
+func TestStartLeavesAHarnessThatTitlesToNameItself(t *testing.T) {
+	cases := []struct {
+		name    string
+		typed   string
+		command []string
+		label   string
+	}{
+		{
+			name:    "no name typed",
+			command: []string{"titled", "--", "Fix the login page"},
+			label:   "Fix the login page",
+		},
+		{
+			name:    "a name typed",
+			typed:   "billing retries",
+			command: []string{"titled", "--name", "billing retries", "--", "Fix the login page"},
+			label:   "billing retries",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := newWorld(t)
+			a, err := w.inbox.Start(t.Context(), verbs.StartRequest{
+				Prompt: "Fix the login page", Harness: "titled", Name: c.typed, Dir: t.TempDir(), Session: "work",
+			})
+			require.NoError(t, err)
+			require.Equal(t, c.label, a.Name)
+			require.Equal(t, c.command, w.rex.Started()[0].Command)
+			require.Equal(t, c.label, w.rex.Started()[0].WindowLabel)
 		})
 	}
 }

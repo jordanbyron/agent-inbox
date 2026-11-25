@@ -18,6 +18,7 @@ type Rex interface {
 	Apps(ctx context.Context) ([]rex.App, error)
 	CloseBlock(ctx context.Context, sessionID, blockID string) error
 	CloseWindow(ctx context.Context, sessionID, windowID string) error
+	SetWindowLabel(ctx context.Context, sessionID, windowID, label string) error
 	Capture(ctx context.Context, sessionID, blockID string) (string, error)
 	Events(ctx context.Context) (<-chan rex.Event, <-chan error)
 }

@@ -38,6 +38,9 @@ type Recipe struct {
 	// Sessions learns the session id of a harness that cannot be given one
 	// at start. It is nil for a recipe from the config file.
 	Sessions SessionFinder `toml:"-"`
+	// Titles reads the title the harness gives a conversation. It is nil
+	// for a recipe from the config file.
+	Titles TitleFinder `toml:"-"`
 }
 
 // Choices are the values the form offers for each of its pickers.

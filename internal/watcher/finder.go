@@ -21,6 +21,7 @@ type finder struct {
 	gh        pulls.Runner
 	git       worktree.Git
 	refresher *pulls.Refresher
+	home      string
 	log       *slog.Logger
 }
 
@@ -37,6 +38,8 @@ type finding struct {
 	// key is the agent the pull requests are for, and empty for a refresh.
 	key string
 	prs []state.PullRequest
+	// title is the harness's new title for a launched agent, if it has one.
+	title string
 }
 
 // work runs jobs until ctx ends.
@@ -75,6 +78,10 @@ func (fd finding) mergeInto(st *state.State) {
 	if fd.key != "" {
 		if len(fd.prs) > 0 {
 			st.PullRequests[fd.key] = pulls.Merge(st.PullRequests[fd.key], fd.prs)
+		}
+		if rec, ok := st.Records[fd.key]; ok && fd.title != "" {
+			rec.Title = fd.title
+			st.Records[fd.key] = rec
 		}
 		return
 	}

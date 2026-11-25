@@ -3,6 +3,7 @@
 package state
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -54,8 +55,13 @@ type Record struct {
 	// SessionID is the harness's own id for the conversation, which its
 	// resume command takes.
 	SessionID string
-	Name      string
-	Dir       string
+	// Name is what the agent was launched as: the name typed in the form,
+	// or one made from the prompt. Its worktree and branch are named for it.
+	Name string
+	// Title is the harness's own title for the conversation, which the
+	// watcher keeps up to date. It is empty until the harness gives one.
+	Title string
+	Dir   string
 	// Worktree and Branch are empty for an agent started without a worktree.
 	Worktree string
 	Branch   string
@@ -65,10 +71,17 @@ type Record struct {
 	Began      time.Time
 }
 
+// Label is what the agent is called: the harness's title once it has one,
+// else its name.
+func (r Record) Label() string {
+	return cmp.Or(r.Title, r.Name)
+}
+
 type recordJSON struct {
 	Harness    string `json:"harness"`
 	SessionID  string `json:"session_id,omitempty"`
 	Name       string `json:"name"`
+	Title      string `json:"title,omitempty"`
 	Dir        string `json:"dir"`
 	Worktree   string `json:"worktree,omitempty"`
 	Branch     string `json:"branch,omitempty"`
@@ -84,6 +97,7 @@ func (r Record) MarshalJSON() ([]byte, error) {
 		Harness:    r.Harness,
 		SessionID:  r.SessionID,
 		Name:       r.Name,
+		Title:      r.Title,
 		Dir:        r.Dir,
 		Worktree:   r.Worktree,
 		Branch:     r.Branch,
@@ -103,6 +117,7 @@ func (r *Record) UnmarshalJSON(data []byte) error {
 		Harness:    j.Harness,
 		SessionID:  j.SessionID,
 		Name:       j.Name,
+		Title:      j.Title,
 		Dir:        j.Dir,
 		Worktree:   j.Worktree,
 		Branch:     j.Branch,

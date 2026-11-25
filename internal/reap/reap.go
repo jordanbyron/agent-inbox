@@ -78,7 +78,7 @@ func name(st *state.State, key string) string {
 	if alias := st.Entries[key].Alias; alias != "" {
 		return alias
 	}
-	return cmp.Or(st.Records[key].Name, key)
+	return cmp.Or(st.Records[key].Label(), key)
 }
 
 // Deleter deletes a family by its root's key, with delete's refusals.

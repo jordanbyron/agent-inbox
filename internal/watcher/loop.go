@@ -45,9 +45,10 @@ type watcher struct {
 	// found waits to be merged into the state at the next observation.
 	found []finding
 	// queue waits for the finder, which takes one job at a time.
-	queue      []job
-	refreshing bool
-	lastScan   time.Time
+	queue         []job
+	refreshing    bool
+	lastScan      time.Time
+	lastTitleScan time.Time
 	// unclosable are blocks Rex refused to close, not asked again.
 	unclosable map[string]bool
 
@@ -83,6 +84,7 @@ func newWatcher(opts Options, store *state.Store) (*watcher, error) {
 			gh:        opts.GH,
 			git:       opts.Git,
 			refresher: pulls.NewRefresher(opts.GH),
+			home:      opts.Home,
 			log:       opts.Log,
 		},
 		world:      newWorld(),
@@ -237,6 +239,14 @@ func (w *watcher) onTick(now time.Time) {
 		for _, a := range w.agents {
 			if a.live() && a.launched && a.record.Worktree != "" {
 				w.enqueue(branchJob{key: a.key, worktree: a.record.Worktree})
+			}
+		}
+	}
+	if now.Sub(w.lastTitleScan) >= titleScanEvery {
+		w.lastTitleScan = now
+		for _, a := range w.agents {
+			if j, ok := w.titleJob(a); ok {
+				w.enqueue(j)
 			}
 		}
 	}
