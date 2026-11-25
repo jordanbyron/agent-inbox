@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/jordanbyron/agent-inbox/internal/cli"
+	"github.com/jordanbyron/agent-inbox/internal/config"
 )
 
 func TestVersion(t *testing.T) {
@@ -72,4 +73,18 @@ func TestHoldFocusIsHidden(t *testing.T) {
 
 	require.NoError(t, cmd.Execute())
 	require.NotContains(t, out.String(), "hold-focus")
+}
+
+func TestReapDeleterDoesNotStartWatcher(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("REX_BIN_DIR", "")
+	t.Setenv("PATH", "")
+
+	d, err := cli.ReapDeleter(t.TempDir(), config.Config{Reap: false})
+	require.NoError(t, err)
+	require.Nil(t, d)
+
+	d, err = cli.ReapDeleter(t.TempDir(), config.Config{Reap: true})
+	require.NoError(t, err)
+	require.NotNil(t, d)
 }
