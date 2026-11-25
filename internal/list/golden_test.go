@@ -35,16 +35,24 @@ type screen struct {
 
 func newScreen(t *testing.T, snap snapshot.Snapshot, width, height int) *screen {
 	t.Helper()
-	return openScreen(t, snap, width, height, false)
+	return openScreen(t, snap, width, height, list.Config{})
 }
 
 // newModal is the list as list --modal shows it, 100 columns wide.
 func newModal(t *testing.T, height int) *screen {
 	t.Helper()
-	return openScreen(t, fixture(t), 100, height, true)
+	return openScreen(t, fixture(t), 100, height, list.Config{Modal: true})
 }
 
-func openScreen(t *testing.T, snap snapshot.Snapshot, width, height int, modal bool) *screen {
+// newParked is the list as it sits in a pane beside an agent, in that
+// agent's tab.
+func newParked(t *testing.T, tab string, width, height int) *screen {
+	t.Helper()
+	return openScreen(t, fixture(t), width, height, list.Config{Tab: tab})
+}
+
+// openScreen takes Modal and Tab from c and fills in the rest.
+func openScreen(t *testing.T, snap snapshot.Snapshot, width, height int, c list.Config) *screen {
 	t.Helper()
 	s := &screen{t: t, actions: &recorder{}, clock: now}
 	s.model = list.New(list.Config{
@@ -52,7 +60,8 @@ func openScreen(t *testing.T, snap snapshot.Snapshot, width, height int, modal b
 		Actions: s.actions,
 		Now:     func() time.Time { return s.clock },
 		Home:    "/home/dev",
-		Modal:   modal,
+		Modal:   c.Modal,
+		Tab:     c.Tab,
 	})
 	s.send(tea.WindowSizeMsg{Width: width, Height: height})
 	return s
@@ -183,6 +192,15 @@ func TestGoldenFrames(t *testing.T) {
 
 func TestGoldenModal(t *testing.T) {
 	golden.Require(t, "modal_100x30", newModal(t, 30).frame())
+}
+
+// w2 holds the login fix, which otherwise sits in Needs you. A modal over
+// that tab leads with it as the split beside it does.
+func TestGoldenParked(t *testing.T) {
+	golden.Require(t, "parked_100x30", newParked(t, "w2", 100, 30).frame())
+	golden.Require(t, "parked_50x30", newParked(t, "w2", 50, 30).frame())
+	modal := openScreen(t, fixture(t), 100, 30, list.Config{Modal: true, Tab: "w2"})
+	golden.Require(t, "modal_tab_100x30", modal.frame())
 }
 
 func TestGoldenEmptyInbox(t *testing.T) {

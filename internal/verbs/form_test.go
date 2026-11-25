@@ -54,3 +54,26 @@ func TestNewOpensTheForm(t *testing.T) {
 		require.ErrorContains(t, err, "block:gone is in no window")
 	})
 }
+
+func TestTabIsThePaneWindow(t *testing.T) {
+	t.Run("the window holding the block, found from the block alone", func(t *testing.T) {
+		w := newWorld(t)
+		w.tab(t, "editor", "")
+		listBlock := w.tab(t, "inbox", "")
+		w.env["REX_BLOCK"] = listBlock
+		view, err := w.rex.View(t.Context(), w.session)
+		require.NoError(t, err)
+
+		tab, err := w.inbox.Tab(t.Context())
+
+		require.NoError(t, err)
+		require.Equal(t, view.Windows[1].ID, tab)
+	})
+
+	t.Run("none outside Rex", func(t *testing.T) {
+		tab, err := newWorld(t).inbox.Tab(t.Context())
+
+		require.NoError(t, err)
+		require.Empty(t, tab)
+	})
+}

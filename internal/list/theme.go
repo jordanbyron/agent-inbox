@@ -14,6 +14,7 @@ import (
 )
 
 var sectionStyles = map[triage.Section]lipgloss.Style{
+	sectionTab:             theme.Blue,
 	triage.SectionPinned:   theme.Cyan,
 	triage.SectionNeedsYou: theme.Red,
 	triage.SectionActive:   theme.Yellow,
@@ -23,6 +24,7 @@ var sectionStyles = map[triage.Section]lipgloss.Style{
 }
 
 var sectionTitles = map[triage.Section]string{
+	sectionTab:             "THIS TAB",
 	triage.SectionPinned:   "PINNED",
 	triage.SectionNeedsYou: "NEEDS YOU",
 	triage.SectionActive:   "ACTIVE",

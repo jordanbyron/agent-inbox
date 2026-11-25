@@ -18,6 +18,33 @@ func foldStop(section triage.Section) stop { return stop{fold: section} }
 
 func (s stop) isFold() bool { return s.fold != "" }
 
+// sectionTab is the list's own lead group rather than a triage section:
+// the agents in the Rex tab the list sits in, lifted out of their sections.
+const sectionTab triage.Section = "tab"
+
+// arrange lifts the rows whose block is in the tab into sectionTab, ahead
+// of the rest, so a list parked beside an agent says which one it is.
+func arrange(snap snapshot.Snapshot, tab string) snapshot.Snapshot {
+	if tab == "" {
+		return snap
+	}
+	here := snapshot.Section{Name: sectionTab}
+	out := snapshot.Snapshot{WatcherVersion: snap.WatcherVersion, Sections: []snapshot.Section{{}}}
+	for _, sec := range snap.Sections {
+		rest := snapshot.Section{Name: sec.Name}
+		for _, row := range sec.Rows {
+			if row.RexWindow == tab {
+				here.Rows = append(here.Rows, row)
+			} else {
+				rest.Rows = append(rest.Rows, row)
+			}
+		}
+		out.Sections = append(out.Sections, rest)
+	}
+	out.Sections[0] = here
+	return out
+}
+
 var foldable = []triage.Section{triage.SectionWorking, triage.SectionSnoozed, triage.SectionSettled}
 
 func folded(section triage.Section, expanded map[triage.Section]bool) bool {

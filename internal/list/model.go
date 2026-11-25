@@ -46,6 +46,8 @@ type Config struct {
 	// Modal makes the list close once it shows an agent, and on Esc, as
 	// one in a Rex floating layer should.
 	Modal bool
+	// Tab is the Rex window the list sits in. Its agents lead the list.
+	Tab string
 }
 
 // ReloadMsg tells the model that the snapshot file changed.
@@ -61,6 +63,7 @@ type Model struct {
 	home    string
 	restart func() error
 	modal   bool
+	tab     string
 
 	snap      snapshot.Snapshot
 	loaded    bool
@@ -101,6 +104,7 @@ func New(c Config) Model {
 		home:     c.Home,
 		restart:  c.Restart,
 		modal:    c.Modal,
+		tab:      c.Tab,
 		expanded: map[triage.Section]bool{},
 		filter:   newInput("", 0),
 		spinner:  spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(theme.Yellow)),
@@ -440,8 +444,14 @@ func (m Model) filtered() snapshot.Snapshot {
 	return m.snap.Filter(m.filter.Value())
 }
 
+// shown is the filtered snapshot as the list lays it out, with the tab's
+// agents in a section of their own.
+func (m Model) shown() snapshot.Snapshot {
+	return arrange(m.filtered(), m.tab)
+}
+
 func (m Model) stops() []stop {
-	return allStops(m.filtered(), m.expanded)
+	return allStops(m.shown(), m.expanded)
 }
 
 func (m Model) selectedRow() (snapshot.Row, bool) {
@@ -492,7 +502,7 @@ func (m *Model) selectNeighbor() {
 }
 
 func (m *Model) jumpSection(dir int) {
-	snap := m.filtered()
+	snap := m.shown()
 	heads := sectionHeads(snap, m.expanded)
 	if len(heads) == 0 {
 		return
@@ -507,7 +517,7 @@ func (m *Model) jumpSection(dir int) {
 }
 
 func (m Model) currentFold() (triage.Section, bool) {
-	section, ok := sectionOf(m.filtered(), m.selected)
+	section, ok := sectionOf(m.shown(), m.selected)
 	return section, ok && slices.Contains(foldable, section)
 }
 
@@ -519,7 +529,7 @@ func (m *Model) setExpanded(open bool) {
 		return
 	}
 	m.expanded[section] = open
-	for _, group := range sectionHeads(m.filtered(), m.expanded) {
+	for _, group := range sectionHeads(m.shown(), m.expanded) {
 		if group.section == section {
 			m.choose(m.stops(), slices.Index(m.stops(), group.stops[0]))
 		}
@@ -554,7 +564,7 @@ func (m *Model) clearFilter() {
 }
 
 func (m *Model) scroll() {
-	lines := m.body(m.filtered())
+	lines := m.body(m.shown())
 	view := m.page()
 	first := slices.IndexFunc(lines, func(l bodyLine) bool { return l.stop == m.selected })
 	if first >= 0 && m.selected != (stop{}) {
@@ -583,10 +593,9 @@ func (m Model) render() string {
 	if m.width <= 0 || m.height <= 0 {
 		return ""
 	}
-	snap := m.filtered()
-	body := m.body(snap)
+	body := m.body(m.shown())
 	view := m.page()
-	lines := []string{m.header(snap)}
+	lines := []string{m.header(m.filtered())}
 	for i := range view {
 		line := ""
 		if m.top+i < len(body) {
