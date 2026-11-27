@@ -46,6 +46,7 @@ var frames = []struct {
 		s.press("ctrl+v")
 		s.press("tab", "tab", "tab", "tab", "l", "tab", "l", "l", "tab", "l", "l", "l", "l", "tab", "l")
 	}},
+	{name: "start_button", drive: func(s *screen) { s.typing("fix it").press("shift+tab") }},
 	{name: "slash_menu", configure: skills, drive: func(s *screen) { s.typing("/un") }},
 	{name: "long_prompt", drive: func(s *screen) {
 		for i := 1; i <= 14; i++ {

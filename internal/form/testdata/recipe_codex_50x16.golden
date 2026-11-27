@@ -4,7 +4,6 @@
  │                                              │ 
  │                                              │ 
  └──────────────────────────────────────────────┘ 
-                                                  
  ▶ Harness       claude  [codex]  agy             
    Name         Agent                             
    Directory    ~/code/app                        
@@ -13,4 +12,5 @@
    Effort       [default]  low   medium   high  … 
    Permissions  [default]  read-only  …           
    Worktree      no  [yes]                        
+   [ Start ]                                      
  ← → change  ^S start  ^O start & show            

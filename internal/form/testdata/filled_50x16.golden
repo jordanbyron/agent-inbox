@@ -4,7 +4,6 @@
  │ people back to the sign-in page after their  │ 
  │ session expires, see [Image #1]              │ 
  └──────────────────────────────────────────────┘ 
-                                                  
    Harness      [claude]  codex   agy             
    Name         Fix the login redirect loop tha…  
    Directory    ~/code/app                        
@@ -13,4 +12,5 @@
    Effort       …  low   medium   high  [xhigh] … 
  ▶ Permissions   default  [acceptEdits]  auto  …  
    Worktree      no  [yes]                        
+   [ Start ]                                      
  ← → change  ^S start  ^O start & show            

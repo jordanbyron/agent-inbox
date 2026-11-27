@@ -1,5 +1,4 @@
  New agent                                        
-                                                  
  ┌▶ Prompt ─────────────────────────────────────┐ 
  │  What should this agent do?                  │ 
  │                                              │ 
@@ -13,4 +12,5 @@
    Model        [default]  fable   opus  …        
    Effort       [default]  low   medium   high  … 
    Permissions  [default]  acceptEdits   auto  …  
+   [ Start ]                                      
  ⏎ newline  ^V image  ^S start  ^O start & show   

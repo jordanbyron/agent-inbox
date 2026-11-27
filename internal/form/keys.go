@@ -113,9 +113,12 @@ func (m *Model) perform(a action, msg tea.KeyPressMsg) tea.Cmd {
 			m.move(-1)
 		}
 	case actionEnter:
-		if m.focus == fieldPrompt {
+		switch m.focus {
+		case fieldPrompt:
 			m.prompt.Insert("\n")
-		} else {
+		case fieldStart:
+			return m.submit(false)
+		default:
 			m.move(1)
 		}
 	default:
