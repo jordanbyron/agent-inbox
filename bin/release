@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# Cuts a release from main on the maintainer's machine, the way bin/ci signs
+# off PRs. See CONTRIBUTING.md.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec go run ./cmd/release "$@"
