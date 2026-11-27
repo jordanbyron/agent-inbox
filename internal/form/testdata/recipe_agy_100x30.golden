@@ -1,0 +1,30 @@
+ New agent                                                                                          
+                                                                                                    
+ ┌─ Prompt ───────────────────────────────────────────────────────────────────────────────────────┐ 
+ │ What should this agent do?                                                                     │ 
+ │                                                                                                │ 
+ │                                                                                                │ 
+ └────────────────────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                    
+ ▶ Harness       claude   codex  [agy]                                                              
+   Name         Agent                                                                               
+   Directory    ~/code/app                                                                          
+   Rex session  [work]  side projects   new session                                                 
+   Model        [default]                                                                           
+   Effort       [default]  low   medium   high   xhigh   max                                        
+   Permissions  [default]  accept-edits   auto   plan                                               
+   Worktree      no  [yes]                                                                          
+   [ Start ]                                                                                        
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ ← → change  ^S start  ^O start & show  esc cancel  ⇥ next                                          

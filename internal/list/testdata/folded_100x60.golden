@@ -1,0 +1,60 @@
+ ▌ agent-inbox   ★ 1  ● 7  ✻ 2  ◌ 1  z 2  ◦ 3                                                       
+                                                                                                    
+ ▎ PINNED ────────────────────────────────────────────────────────────────────────────────────── 1  
+ ▶ ✓ release notes for v2                           done · 15m · #912 open · changes requested  app 
+       ↳ Drafted notes for 14 merged pull requests                                                  
+                                                                                                    
+ ▎ NEEDS YOU ─────────────────────────────────────────────────────────────────────────────────── 7  
+ ● ? fix the login redirect loop            needs you: permission · 12s · #901 open · ✗ checks  app 
+       ↳ Bash: rm -rf node_modules && npm ci                                                        
+   ✓ migrate billing to the new queue                               done · 50m · #77 draft  billing 
+       ↳ Split the work across three agents                                                         
+ ● ?   queue names                                    needs you: question · codex · 5m  queue-names 
+         ↳ Which queue should invoices use?                                                         
+   ◦   audit the old cron jobs                                              closed · 1h  cron-audit 
+   ⠋   port the retry worker                                             working · 1m  retry-worker 
+         ↳ Running go test ./worker/...                                                             
+ ● ✗ nightly import                                                          failed · agy · 1h  etl 
+       ↳ exit status 1: connection refused                                                          
+ ● ? sync the team calendar                                          needs you: auth · 2h  calendar 
+       ↳ Sign in to Google to continue                                                              
+                                                                                                    
+ ▎ ACTIVE ────────────────────────────────────────────────────────────────────────────────────── 6  
+   · claude                                                                  starting · 5s  scratch 
+       ↳ ~/scratch                                                                                  
+   ⠋ Explain why the flaky spec in spec/poller_spec.rb times out on C…  working · 50s  claude-inbox 
+       ↳ Reading spec/poller_spec.rb                                                                
+   ◌ deploy preview                                                     waiting · codex · 10m  site 
+       ↳ Waiting on 2 background shells                                                             
+ ● ✓ 🚀 launch checklist for the mobile beta              done · 2m · #230 open · conflicts  mobile 
+       ↳ Checklist written to docs/beta.md                                                          
+   ✓ bump dependencies                                            done · 3h · #940 merged · +1  app 
+       ↳ ~/code/app                                                                                 
+   ■ triage github issues                      idle · codex · 8h · github.com/acme/app/pull/77  app 
+       ↳ ~/code/app                                                                                 
+                                                                                                    
+ ▎ WORKING ───────────────────────────────────────────────────────────────────────────────────── 1  
+   … 1 working                                                                                      
+                                                                                                    
+ ▎ SNOOZED ───────────────────────────────────────────────────────────────────────────────────── 2  
+   … 2 snoozed                                                                                      
+                                                                                                    
+ ▎ SETTLED ───────────────────────────────────────────────────────────────────────────────────── 3  
+   … 3 settled                                                                                      
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ j/k move  ⏎ show  n new  t pin  s snooze  u wake  a alias  o PR  x settle  ⇥ section  za fold  / f…

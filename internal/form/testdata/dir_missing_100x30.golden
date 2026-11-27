@@ -1,0 +1,30 @@
+ New agent                                                                                          
+                                                                                                    
+ ┌─ Prompt ───────────────────────────────────────────────────────────────────────────────────────┐ 
+ │ fix it                                                                                         │ 
+ │                                                                                                │ 
+ │                                                                                                │ 
+ └────────────────────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                    
+   Harness      [claude]  codex   agy                                                               
+   Name         Fix it                                                                              
+ ▶ Directory    ~/code/nope/deeper                                                                  
+                nothing in ~/code matches nope                                                      
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+   Rex session  [work]  side projects   new session                                                 
+   Model        [default]  fable   opus   sonnet   haiku                                            
+   Effort       [default]  low   medium   high   xhigh   max                                        
+   Permissions  [default]  acceptEdits   auto   plan   bypassPermissions                            
+   [ Start ]                                                                                        
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ ⇥ next  ^S start  ^O start & show  esc cancel                                                      

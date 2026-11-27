@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌▶ Prompt ────────────────────────── ↑ 26 more ┐ 
+ │ step 14: and then some more words and then   │ 
+ │ some more words                              │ 
+ │ done                                         │ 
+ └──────────────────────────────────────────────┘ 
+   Harness      [claude]  codex   agy             
+   Name         Step 1: and then some more word…  
+   Directory    ~/code/app                        
+   Rex session  [work]  side projects  …          
+   Model        [default]  fable   opus  …        
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  acceptEdits   auto  …  
+   Worktree      no  [yes]                        
+   [ Start ]                                      
+ ⏎ newline  ^V image  ^S start  ^O start & show   

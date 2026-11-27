@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌─ Prompt ─────────────────────────────────────┐ 
+ │ fix it                                       │ 
+ └──────────────────────────────────────────────┘ 
+   Harness      [claude]  codex   agy             
+   Name         Fix it                            
+ ▶ Directory    ~/code/nope/deeper                
+                nothing in ~/code matches nope    
+                                                  
+                                                  
+   Rex session  [work]  side projects  …          
+   Model        [default]  fable   opus  …        
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  acceptEdits   auto  …  
+   [ Start ]                                      
+ ⇥ next  ^S start  ^O start & show  esc cancel    

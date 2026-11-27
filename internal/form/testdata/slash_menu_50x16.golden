@@ -1,0 +1,16 @@
+ New agent                                        
+ ┌▶ Prompt ─────────────────────────────────────┐ 
+ │ /un                                          │ 
+ │                                              │ 
+ │                                              │ 
+ └──────────────────────────────────────────────┘ 
+   ▶ /unslop   unslop does things                 
+     /unsplit  unsplit does things                
+   Harness      [claude]  codex   agy             
+   Name         /un                               
+   Directory    ~/code/app                        
+   Rex session  [work]  side projects  …          
+   Model        [default]  fable   opus  …        
+   Effort       [default]  low   medium   high  … 
+   Permissions  [default]  acceptEdits   auto  …  
+ ↑↓ choose  ⇥ ⏎ pick  esc close                   

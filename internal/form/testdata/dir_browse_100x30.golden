@@ -1,0 +1,30 @@
+ New agent                                                                                          
+                                                                                                    
+ ┌─ Prompt ───────────────────────────────────────────────────────────────────────────────────────┐ 
+ │ fix it                                                                                         │ 
+ │                                                                                                │ 
+ │                                                                                                │ 
+ └────────────────────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                    
+   Harness      [claude]  codex   agy                                                               
+   Name         Fix it                                                                              
+ ▶ Directory    ~/code/                                                                             
+                ..                                                                                  
+                agent-inbox/  git                                                                   
+              ▶ app/          git                                                                   
+                Notebook/                                                                           
+                site/         git                                                                   
+                tria/                                                                               
+                                                                                                    
+                                                                                                    
+   Rex session  [work]  side projects   new session                                                 
+   Model        [default]  fable   opus   sonnet   haiku                                            
+   Effort       [default]  low   medium   high   xhigh   max                                        
+   Permissions  [default]  acceptEdits   auto   plan   bypassPermissions                            
+   [ Start ]                                                                                        
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ ⏎ open  ← parent  ⇥ pick  esc back  ^S start  ^O start & show                                      

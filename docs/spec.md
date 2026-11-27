@@ -54,7 +54,7 @@ To anchor the discussion, here is one agent's life:
 2. agent-inbox creates a worktree at `<repo>/.worktrees/fix-login`, writes a
    record, and starts `claude` in a new Rex tab labelled with the agent's id.
 3. Claude reports `working`, then `blocked` on a permission prompt. The
-   watcher sees both. The row moves to Needs you and a notification fires.
+   watcher sees both. The row moves to Needs you and Rex notifies you.
 4. You press `Enter` on the row. Rex shows the tab, the watcher marks the
    agent seen, and the row moves to Active.
 5. The agent opens a pull request from its worktree's branch. The watcher
@@ -225,9 +225,27 @@ session, Model, Effort, Permissions and Worktree.
   how its harness mentions a file and which directories hold its commands.
   Claude's built-in recipe also reads installed plugins, as `SlashCommands`
   does today.
-- `Tab` moves between fields, `Ctrl-S` starts the agent and `Ctrl-O` starts
-  it and shows its tab.
-- An empty Name is filled from the prompt's first words. No model is asked.
+- Directory opens a list of the directories under the typed path, filtered
+  by what is typed after the last `/`, with recent directories first until
+  the path is edited. `Enter` moves into the list; `↑` and `↓` on the path move
+  between fields as they do everywhere else.
+- Directory starts on the one last chosen in the form, kept in
+  `state.json`, or the current directory before any is chosen or once it is
+  gone. `--cwd` overrides it.
+- `Tab` moves between fields and on to a Start button, where `Enter` starts
+  the agent. `Ctrl-S` starts it from any field and `Ctrl-O` starts it and
+  shows its tab.
+- An empty Name is filled from the prompt's first sentence, cut at a word to
+  fit a tab. No model is asked. The name is for people: it titles the tab
+  and the inbox row until the harness gives a title of its own, and the
+  worktree and branch use a kebab-case slug of it without filler words
+  ("Fix the login bug on Safari" gives `fix-login-bug-safari`).
+- A harness that titles its own conversations, as Claude Code does, is
+  passed the name only when one was typed, since Claude Code titles a
+  session only when started without `--name`. The watcher reads the title
+  from the transcript every 30 seconds into the record's `title`, and the
+  row takes it; so does the tab, unless it was renamed by hand. A
+  `/rename` inside Claude Code arrives the same way.
 
 Every field is also a flag, and with `--prompt` given no form opens. That is
 how a script or another agent starts one:
@@ -241,8 +259,8 @@ nothing is left half made:
 
 1. Write the record.
 2. Create the worktree: `git worktree add` at the path template, on a new
-   branch named for the agent, from `origin`'s default branch after a fetch
-   (`worktree.base = "head"` branches from the checkout's HEAD instead). A
+   branch named for the agent's slug, from `origin`'s default branch after a
+   fetch (`worktree.base = "head"` branches from the checkout's HEAD instead). A
    taken name gets `-2`. A path inside the repository is added to
    `.git/info/exclude`, so nothing is committed to ignore it.
 3. Start the recipe's command in a new tab of the chosen session, in that
@@ -292,8 +310,8 @@ unchanged. GitHub through `gh` is the only host in v1.
   the server and each session. From those it records each agent's state,
   which tab each app is showing, and which blocks closed.
 - **Acting.** It applies the automatic rules: wake, auto-settle, and
-  settling an agent whose block closed. With `notify = true` it sends a
-  desktop notification when a family starts needing you or finishes.
+  settling an agent whose block closed. It sends no notifications: Rex
+  already notifies when an agent needs you or finishes.
 - **Reacting to you.** It watches `state.json`, so a verb's edit reaches the
   snapshot at once.
 
@@ -301,8 +319,11 @@ unchanged. GitHub through `gh` is the only host in v1.
 
 **The list** is claude-inbox's screen: the same sections, row layout, folds
 and filter. Below 60 columns it draws one line per row (badge, label, pull
-request), which is the old Claude Code pane as a Rex split. It reads only
-the snapshot.
+request), which is the old Claude Code pane as a Rex split. As that pane
+led with "This session", a list split into a tab with agents in it lifts
+them out of their sections into a This tab group at the top; a modal
+does not. It reads only the snapshot, plus Rex once at start to learn
+which tab a split is in.
 
 Keys keep their claude-inbox meanings: `j` `k` `gg` `G`, the paging keys,
 `Tab`, `h` `za` `zo` `zc`, `Enter` `l`, `n`, `t`, `s`, `u`, `x`, `a`, `o`,
@@ -351,14 +372,16 @@ effort      = ["default", "low", "medium", "high", "xhigh", "max"]
 ```
 
 A flag whose value is `default` is left out along with its value. A recipe
-in the config file with a built-in's name replaces it.
+in the config file with a built-in's name replaces it. A choice that needs
+several flags, as Codex's permissions set both sandbox and approval, is
+spelled out under `[recipes.NAME.permission_args]`, a list of arguments
+per choice that takes the place of the `{permissions}` flag pair.
 
 The rest of the config:
 
 ```toml
 sort = "default"            # or "activity"
 fold_working = false
-notify = false
 reap = false
 
 [worktree]
@@ -391,8 +414,10 @@ leaves out, most of it with a live test. This spec leans on these:
 - The connection that creates a block owns it, and the app won't size the
   block until that connection disowns it or closes. `new` and `restore` are
   short-lived, so they're fine. The watcher never creates a block.
-- A focus change emits only `session_view_changed`. "Seen" is therefore read
-  per tab, from the session's `active_window_id`.
+- A focus change emits only `session_view_changed`. On Rex API revision 10
+  the session's `active_window_id` doesn't follow the app either, so "seen"
+  is read from the `size_changed` event an app sends for each block it
+  displays. [rex-client-notes.md](rex-client-notes.md) has the details.
 - Lua in `init.lua` runs with the Rex server's environment, whose `PATH`
   lacks most tools (inferred there, not tested). `agent-inbox lua` writes
   the binary's absolute path into the snippet.
@@ -413,7 +438,7 @@ Rex, then, and survives a watcher restart.
 | `PullRequests`, `StackLinks` | ~300 | Ported. Discovery changes; health and refresh don't. |
 | `NewSessionForm`, `TextBuffer`, `SlashCommands`, `Images`, `Paste` | ~950 | Rewritten on Bubble Tea. The specs list the cases. |
 | `Renderer`, `Dialog`, `Keymap`, `Theme`, `Text` | ~960 | Rewritten on Bubble Tea. `bin/screens` output is the reference. |
-| `Notifier`, `Reaper` | ~180 | Ported into the watcher. |
+| `Notifier`, `Reaper` | ~180 | `Reaper` ported into the watcher. `Notifier` dropped: Rex notifies. |
 | `Rex` and `claude-inbox attach` | ~110 | Becomes the Rex client the whole program uses. |
 | `Poller`, `Snapshot`, `Headless` | ~260 | The idea survives as the watcher. The code doesn't. |
 | Claude and Codex adapters, the relay, `VtScreen` | ~1,300 | Dropped. |
