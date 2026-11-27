@@ -5,6 +5,8 @@ A triage inbox for coding agents (Claude Code, Codex, agy) running in
 active, pinned, snoozed and settled, starts new ones in worktrees, and
 follows their pull requests.
 
+![The agent-inbox list in a Rex tab, with three active agents and ten settled](docs/screenshot.png)
+
 ## Install
 
 Requires Rex, and `gh` for pull requests.
