@@ -46,13 +46,15 @@ AGENT_INBOX_LIVE_GH=1 go test ./internal/pulls # this repository on GitHub
 There's no hosted CI. `bin/ci` runs on your machine and reports back with
 [gh-signoff](https://github.com/basecamp/gh-signoff).
 
-1. Push your branch and open the PR.
+1. Push your branch and open the PR, its title a conventional commit
+   (`feat: …`, `fix: …`) like every commit on it.
 2. Run `bin/ci`. It checks formatting, lints, checks `go.mod` is tidy, audits
    dependencies with `govulncheck`, runs the tests with the race detector and
    builds the binary.
 3. If every step passes and HEAD is on the remote, it runs `gh signoff`,
    which sets a green `signoff` status on the PR.
-4. Merge.
+4. Squash-merge. The squashed commit takes the PR's title, or a lone
+   commit's own subject.
 
 With HEAD not pushed yet, `bin/ci` skips the signoff and says so, so it's
 fine to run mid-work. gh-signoff also refuses a dirty working tree, since it

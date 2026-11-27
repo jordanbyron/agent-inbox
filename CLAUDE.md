@@ -31,8 +31,13 @@ shared checkout: other sessions commit there concurrently.
   Several cases of one rule are a table of structs run with `t.Run`.
 - Format and lint are whatever `.golangci.yml` says; a `//nolint` names its
   linter and its reason.
-- Commit subjects are `type: what changed` (`fix:`, `feat:`, `refactor:`,
-  `docs:`); the body says why, in prose.
+- Every commit and every PR title is a
+  [conventional commit](https://www.conventionalcommits.org/):
+  `type: what changed` (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`),
+  with `!` or a `BREAKING CHANGE:` footer for a breaking change. The body
+  says why, in prose. PRs are squash-merged, and `bin/release` picks the
+  version and labels the notes from these prefixes, so a PR title without
+  one makes that guess from its commits.
 - A comment records a decision, a constraint or a Rex quirk the code cannot
   show, in a line or two. Exported names get the one-line doc comment Go
   expects. Code that needs a comment to be read is code to rewrite until it
