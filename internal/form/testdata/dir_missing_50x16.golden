@@ -1,7 +1,6 @@
  New agent                                        
  ┌─ Prompt ─────────────────────────────────────┐ 
  │ fix it                                       │ 
- │                                              │ 
  └──────────────────────────────────────────────┘ 
    Harness      [claude]  codex   agy             
    Name         Fix it                            
@@ -13,4 +12,5 @@
    Model        [default]  fable   opus  …        
    Effort       [default]  low   medium   high  … 
    Permissions  [default]  acceptEdits   auto  …  
+   [ Start ]                                      
  ⇥ next  ↓ browse  ^S start  ^O start & show      

@@ -115,6 +115,8 @@ const (
 	fieldEffort
 	fieldPermissions
 	fieldWorktree
+	// fieldStart is the Start button, the last stop before Tab wraps.
+	fieldStart
 )
 
 var fieldLabels = map[fieldKey]string{
@@ -280,7 +282,7 @@ func (m Model) recipe() recipe.Recipe {
 
 func (m Model) fields() []fieldKey {
 	var out []fieldKey
-	for key := fieldPrompt; key <= fieldWorktree; key++ {
+	for key := fieldPrompt; key <= fieldStart; key++ {
 		if m.fieldShown(key) {
 			out = append(out, key)
 		}

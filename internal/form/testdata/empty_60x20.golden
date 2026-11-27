@@ -14,7 +14,7 @@
    Effort       [default]  low   medium   high   xhigh  …   
    Permissions  [default]  acceptEdits   auto   plan  …     
    Worktree      no  [yes]                                  
-                                                            
+   [ Start ]                                                
                                                             
                                                             
  ⏎ newline  ^V image  ^S start  ^O start & show  esc cancel 

@@ -23,8 +23,10 @@ func TestMovingBetweenFields(t *testing.T) {
 		{"starts on the prompt", nil, "Prompt"},
 		{"Tab moves to the next field", []string{"tab"}, "Harness"},
 		{"Tab walks every field in order", []string{"tab", "tab", "tab", "tab", "tab", "tab", "tab", "tab"}, "Worktree"},
-		{"Tab wraps to the prompt", repeat("tab", 9), "Prompt"},
-		{"Shift-Tab wraps backwards", []string{"shift+tab"}, "Worktree"},
+		{"Tab moves from the last field to Start", repeat("tab", 9), "Start"},
+		{"Tab wraps to the prompt", repeat("tab", 10), "Prompt"},
+		{"Shift-Tab wraps backwards to Start", []string{"shift+tab"}, "Start"},
+		{"enter moves on from the last field to Start", append(repeat("tab", 8), "enter"), "Start"},
 		{"down moves on from a field", []string{"tab", "down"}, "Name"},
 		{"up moves back from a field", []string{"tab", "tab", "up"}, "Harness"},
 		{"down leaves a one-row prompt", []string{"down"}, "Harness"},
@@ -91,6 +93,27 @@ func TestStartsWithTheDefaults(t *testing.T) {
 		Prompt: "do it", Harness: "claude", Dir: s.dir, Session: "s1",
 		Model: "default", Effort: "default", Permissions: "default", Worktree: true,
 	}, s.result())
+}
+
+func TestStartButton(t *testing.T) {
+	t.Run("Enter on it starts the agent", func(t *testing.T) {
+		s := newScreen(t, 100, 30).typing("do it").press("shift+tab", "enter")
+		require.Equal(t, "do it", s.result().Prompt)
+		require.False(t, s.result().ShowTab)
+		require.True(t, s.quit)
+	})
+	t.Run("refuses an empty prompt as Ctrl-S does", func(t *testing.T) {
+		s := newScreen(t, 100, 30).press("shift+tab", "enter")
+		_, ok := s.model.Submitted()
+		require.False(t, ok)
+		require.Equal(t, "Prompt", s.focusedLabel())
+	})
+	t.Run("ignores the keys that change a choice", func(t *testing.T) {
+		s := newScreen(t, 100, 30).typing("do it").press("shift+tab", "l", "space", "h")
+		require.Equal(t, "Start", s.focusedLabel())
+		_, ok := s.model.Submitted()
+		require.False(t, ok)
+	})
 }
 
 func TestCtrlOShowsTheTab(t *testing.T) {
@@ -163,7 +186,7 @@ func TestWorktreeNeverOutsideARepository(t *testing.T) {
 }
 
 func TestFocusStaysOnTheFormWhenWorktreeGoes(t *testing.T) {
-	s := newScreen(t, 100, 30).press("shift+tab")
+	s := newScreen(t, 100, 30).press("shift+tab", "shift+tab")
 	require.Equal(t, "Worktree", s.focusedLabel())
 	s.repos[s.dir] = false
 	s.press("shift+tab", "shift+tab", "shift+tab", "shift+tab", "shift+tab")

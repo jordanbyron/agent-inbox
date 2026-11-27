@@ -24,6 +24,9 @@ type State struct {
 	// PullRequests are the pull requests found for each agent, keyed by
 	// agent key.
 	PullRequests map[string][]PullRequest `json:"pull_requests"`
+	// LastDir is the directory last chosen in the new-agent form, where the
+	// form starts next time.
+	LastDir string `json:"last_dir,omitempty"`
 }
 
 func emptyState() *State {

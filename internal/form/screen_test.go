@@ -195,7 +195,7 @@ func (s *screen) footer() string {
 func (s *screen) focusedLabel() string {
 	for _, l := range s.lines() {
 		if _, rest, ok := strings.Cut(l, "▶"); ok {
-			return strings.Fields(rest)[0]
+			return strings.Fields(strings.TrimLeft(rest, " ["))[0]
 		}
 	}
 	return ""

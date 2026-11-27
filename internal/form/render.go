@@ -201,12 +201,25 @@ func (m Model) menuLines(room int) []string {
 }
 
 func (m Model) fieldLine(key fieldKey) string {
+	if key == fieldStart {
+		return m.startButton()
+	}
 	focused := m.focus == key
 	marker, label := " ", theme.Dim(theme.Pad(fieldLabels[key], labelWidth))
 	if focused {
 		marker, label = markerStyle.Render("▶"), theme.Plain.Bold(true).Render(theme.Pad(fieldLabels[key], labelWidth))
 	}
 	return " " + marker + " " + label + " " + m.fieldValue(key, max(m.width-valueColumn-1, 1))
+}
+
+// startButton keeps its brackets in both states, so it reads as a button
+// on a terminal without color.
+func (m Model) startButton() string {
+	marker, button := " ", theme.Plain.Bold(true).Render("[ Start ]")
+	if m.focus == fieldStart {
+		marker, button = markerStyle.Render("▶"), focusedPick.Render("[ Start ]")
+	}
+	return " " + marker + " " + button
 }
 
 func (m Model) fieldValue(key fieldKey, width int) string {
@@ -305,12 +318,17 @@ func (m Model) keyHints() string {
 	}
 	var pairs []string
 	switch {
+	case m.focus == fieldStart:
+		pairs = []string{"⏎", "start"}
 	case m.focus == fieldPrompt:
 		pairs = []string{"⏎", "newline", "^V", "image"}
 	case m.buffer() == nil:
 		pairs = []string{"← →", "change"}
 	}
-	pairs = append(pairs, "^S", "start", "^O", "start & show", "esc", "cancel", "⇥", "next")
+	if m.focus != fieldStart {
+		pairs = append(pairs, "^S", "start")
+	}
+	pairs = append(pairs, "^O", "start & show", "esc", "cancel", "⇥", "next")
 	return m.hints(pairs...)
 }
 

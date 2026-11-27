@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -35,7 +36,7 @@ func newFormCommand(open inboxOpener) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := verbs.StartRequest{Dir: ".", Worktree: inbox.Config.Worktree.Default}
+			req := verbs.StartRequest{Worktree: inbox.Config.Worktree.Default}
 			pane, ok, err := rex.FindPane(cmd.Context(), inbox.Rex, inbox.Getenv)
 			if err != nil {
 				return err
@@ -63,7 +64,8 @@ func newFormCommand(open inboxOpener) *cobra.Command {
 }
 
 // formOptions starts the form from what the request already says, so flags
-// given to new pre-fill it.
+// given to new pre-fill it. With no Dir it starts in the directory last
+// chosen in the form, or the current one when that is gone.
 func formOptions(ctx context.Context, inbox *verbs.Inbox, req verbs.StartRequest, output io.Writer) (form.Options, error) {
 	listed, err := inbox.Rex.Sessions(ctx)
 	if err != nil {
@@ -77,7 +79,7 @@ func formOptions(ctx context.Context, inbox *verbs.Inbox, req verbs.StartRequest
 			current = s.ID
 		}
 	}
-	dir, err := filepath.Abs(req.Dir)
+	dir, err := filepath.Abs(cmp.Or(req.Dir, lastDir(inbox), "."))
 	if err != nil {
 		return form.Options{}, fmt.Errorf("reading the directory: %w", err)
 	}
@@ -97,6 +99,29 @@ func formOptions(ctx context.Context, inbox *verbs.Inbox, req verbs.StartRequest
 		Output:     output,
 		RecentDirs: recentDirs(ctx, inbox),
 	}, nil
+}
+
+func lastDir(inbox *verbs.Inbox) string {
+	st, err := inbox.Store.Read()
+	if err != nil || st.LastDir == "" {
+		return ""
+	}
+	if info, err := os.Stat(st.LastDir); err != nil || !info.IsDir() {
+		return ""
+	}
+	return st.LastDir
+}
+
+// rememberDir keeps the directory chosen in the form for the next one.
+func rememberDir(inbox *verbs.Inbox, dir string) error {
+	err := inbox.Store.Update(func(st *state.State) error {
+		st.LastDir = dir
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("remembering the directory: %w", err)
+	}
+	return nil
 }
 
 // recentDirs lists where agents were started, most recent first. An agent

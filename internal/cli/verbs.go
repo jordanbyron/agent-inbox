@@ -140,6 +140,9 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 			if req.Prompt != "" {
 				return start(cmd, inbox, req)
 			}
+			if !cmd.Flags().Changed("cwd") {
+				req.Dir = ""
+			}
 			opts, err := formOptions(cmd.Context(), inbox, req, cmd.OutOrStdout())
 			if err != nil {
 				return err
@@ -148,7 +151,11 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 			if err != nil || !ok {
 				return err
 			}
-			if err := start(cmd, inbox, fromForm(result, req)); err != nil {
+			err = rememberDir(inbox, result.Dir)
+			if err == nil {
+				err = start(cmd, inbox, fromForm(result, req))
+			}
+			if err != nil {
 				holdOnError(cmd, in, err)
 				return err
 			}
@@ -159,7 +166,7 @@ func newNewCommand(open inboxOpener) *cobra.Command {
 	flags.StringVar(&req.Prompt, "prompt", "", "what to ask the agent")
 	flags.StringVar(&req.Harness, "harness", "", "the recipe to start (default: the first, claude)")
 	flags.StringVar(&req.Name, "name", "", "the agent's name (default: from the prompt)")
-	flags.StringVar(&req.Dir, "cwd", ".", "the directory to start in")
+	flags.StringVar(&req.Dir, "cwd", ".", "the directory to start in (the form defaults to the one last chosen in it)")
 	flags.StringVar(&req.Session, "session", "", "the Rex session's id or label (default: this pane's, else a new one)")
 	flags.StringVar(&req.Model, "model", "", "the model, as the recipe lists them")
 	flags.StringVar(&req.Effort, "effort", "", "the effort, as the recipe lists them")

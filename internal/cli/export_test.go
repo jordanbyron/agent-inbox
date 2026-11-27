@@ -21,6 +21,9 @@ func NewWithInbox(inbox *verbs.Inbox) *cobra.Command {
 // FormOptions is how new opens the form for a request its flags made.
 var FormOptions = formOptions
 
+// RememberDir is how new keeps the form's directory for the next form.
+var RememberDir = rememberDir
+
 // FromForm is how new turns the form's result back into a request.
 var FromForm = fromForm
 
