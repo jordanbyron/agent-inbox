@@ -69,7 +69,6 @@ Settling an agent closes its tab, parked list and all.
 ```toml
 sort = "default"            # or "activity"
 fold_working = false        # agents at work go under Working
-notify = false              # notify when a family needs you or finishes
 reap = false                # delete families settled for 14 days
 
 [worktree]
@@ -85,8 +84,8 @@ resume  = ["my-agent", "--resume", "{session_id}"]
 mention = "@{path}"
 ```
 
-Notifications go through `terminal-notifier` or `osascript` on macOS and
-`notify-send` on Linux. Reap leaves pinned and snoozed families, and any
+Rex sends the notifications when an agent needs you or finishes; agent-inbox
+sends none of its own. Reap leaves pinned and snoozed families, and any
 worktree with uncommitted or unpushed work, alone.
 
 [docs/spec.md](docs/spec.md) is the design; [CONTRIBUTING.md](CONTRIBUTING.md)

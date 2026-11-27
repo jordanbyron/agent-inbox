@@ -53,7 +53,7 @@ To anchor the discussion, here is one agent's life:
 2. agent-inbox creates a worktree at `<repo>/.worktrees/fix-login`, writes a
    record, and starts `claude` in a new Rex tab labelled with the agent's id.
 3. Claude reports `working`, then `blocked` on a permission prompt. The
-   watcher sees both. The row moves to Needs you and a notification fires.
+   watcher sees both. The row moves to Needs you and Rex notifies you.
 4. You press `Enter` on the row. Rex shows the tab, the watcher marks the
    agent seen, and the row moves to Active.
 5. The agent opens a pull request from its worktree's branch. The watcher
@@ -304,8 +304,8 @@ unchanged. GitHub through `gh` is the only host in v1.
   the server and each session. From those it records each agent's state,
   which tab each app is showing, and which blocks closed.
 - **Acting.** It applies the automatic rules: wake, auto-settle, and
-  settling an agent whose block closed. With `notify = true` it sends a
-  desktop notification when a family starts needing you or finishes.
+  settling an agent whose block closed. It sends no notifications: Rex
+  already notifies when an agent needs you or finishes.
 - **Reacting to you.** It watches `state.json`, so a verb's edit reaches the
   snapshot at once.
 
@@ -375,7 +375,6 @@ The rest of the config:
 ```toml
 sort = "default"            # or "activity"
 fold_working = false
-notify = false
 reap = false
 
 [worktree]
@@ -430,7 +429,7 @@ Rex, then, and survives a watcher restart.
 | `PullRequests`, `StackLinks` | ~300 | Ported. Discovery changes; health and refresh don't. |
 | `NewSessionForm`, `TextBuffer`, `SlashCommands`, `Images`, `Paste` | ~950 | Rewritten on Bubble Tea, with rexuikit's fields where they fit. The specs list the cases. |
 | `Renderer`, `Dialog`, `Keymap`, `Theme`, `Text` | ~960 | Rewritten on Bubble Tea. `bin/screens` output is the reference. |
-| `Notifier`, `Reaper` | ~180 | Ported into the watcher. |
+| `Notifier`, `Reaper` | ~180 | `Reaper` ported into the watcher. `Notifier` dropped: Rex notifies. |
 | `Rex` and `claude-inbox attach` | ~110 | Becomes the Rex client the whole program uses. |
 | `Poller`, `Snapshot`, `Headless` | ~260 | The idea survives as the watcher. The code doesn't. |
 | Claude and Codex adapters, the relay, `VtScreen` | ~1,300 | Dropped. |

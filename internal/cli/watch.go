@@ -59,7 +59,6 @@ func newWatchCommand() *cobra.Command {
 				Config:   cfg,
 				Version:  version(),
 				Log:      logger,
-				Notifier: desktopNotifier(cfg, logger),
 				Deleter:  deleter,
 			})
 		},
