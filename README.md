@@ -33,8 +33,8 @@ the list is already open there, behind your work or minimized, it comes
 forward instead; pressed inside the list, the action closes it.
 
 A new agent's tab opens with the list parked in a narrow pane on its left.
-The agent the tab holds leads that list, under This tab, as it does the
-modal opened over it.
+The agent the tab holds leads that list, under This tab. The modal shows
+the whole inbox without that group.
 `agent_inbox_beside` parks it the same way in any tab, or removes it.
 Settling an agent closes its tab, parked list and all.
 
