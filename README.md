@@ -7,11 +7,14 @@ follows their pull requests.
 
 ## Install
 
-Requires Rex, and `gh` for pull requests. From a checkout:
+Requires Rex, and `gh` for pull requests.
 
 ```
-go install ./cmd/agent-inbox
+brew trust jordanbyron/tap
+brew install jordanbyron/tap/agent-inbox
 ```
+
+Or from a checkout, `go install ./cmd/agent-inbox`.
 
 ## Commands
 
