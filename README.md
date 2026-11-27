@@ -91,5 +91,6 @@ Rex sends the notifications when an agent needs you or finishes; agent-inbox
 sends none of its own. Reap leaves pinned and snoozed families, and any
 worktree with uncommitted or unpushed work, alone.
 
-[docs/spec.md](docs/spec.md) is the design; [CONTRIBUTING.md](CONTRIBUTING.md)
-covers working on it.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers working on agent-inbox, and
+[docs/rex-quirks.md](docs/rex-quirks.md) records what Rex and the harnesses
+were seen to do.

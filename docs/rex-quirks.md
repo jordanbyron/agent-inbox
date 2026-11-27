@@ -1,10 +1,84 @@
-# Rex client notes
+# Rex quirks
 
-What building `internal/rex` showed Rex doing, in the style of
-`docs/rex-quirks.md` on the `rex-quirks` branch, to be folded into that file
-once both are merged. Each entry was observed on 2026-11-23 with the rex CLI
-0.1.0-preview.21 (API revision 18) talking to a server that reported API
-revision 10, unless it says otherwise.
+What Rex and the harnesses were seen to do, as opposed to what their docs
+say. Each entry was observed on 2026-11-23 with Rex 0.1.0-preview.21 (API
+revision 18), Claude Code 2.1.331, Codex 0.165.0 and agy 1.5.14, unless it
+or its section says otherwise. Much of it was seen against a server that
+reported API revision 10 while the CLI was revision 18. Add the version and
+date to anything new.
+
+## The Rex CLI and API
+
+- `rex` is on `PATH` only inside a Rex pane, which also gets `REX_BIN_DIR`.
+  [Versions and environment](#versions-and-environment) says where it is
+  elsewhere.
+- The API describes itself. `rex api list` names every method, `rex api
+  describe METHOD` prints its schemas, and `rex api call -s SESSION METHOD
+  JSON` calls it. `session.describe_block` lists the methods and events one
+  block offers.
+- A terminal block's own methods go through `block.method`:
+  `rex api call -s SESSION block.method '{"block_id":"…","method":"program_status"}'`.
+- Status is per block. `rex api list` has no call that returns every
+  block's status, so a watcher asks each block once and then follows the
+  block events `program_status_changed` and `program_status_removed`.
+- `program_status` returns `records`, each with `state`, `app`,
+  `effective_app`, `updated_at` and an `owner` (`pid`, `name`), plus `kind`,
+  `msg`, `title` and `id` when the program sent them. The root record has no
+  `id`.
+- A block's label is set at creation with `rex run --label` or later with
+  `session.set_block_label`, and comes back in `session.list_blocks`.
+- `rex new LABEL -- COMMAND` makes a session that no window of the app is
+  showing, which is a quiet place to run a probe. `rex kill LABEL` removes it.
+- A `rex api call` took about 20 ms here.
+- `-s` takes a session's id or label and attaches before the call, which
+  every session method needs.
+- A failed call prints
+  `Error: stream response "control-3" failed: MESSAGE (status=404 code=not_found)`
+  on stderr. It exits 1 for `bad_request` and `not_supported`, and 3 for
+  `not_found`. The CLI's own lookup prints `Error: session target "x" not
+  found`, with no code, and also exits 3.
+- `rex capture --unwrap` joins soft-wrapped lines, so a long link comes back
+  on one line.
+
+## What each harness reports
+
+All three report OSC 7501 with no hook or setting.
+
+| | Claude Code | Codex | agy |
+|---|---|---|---|
+| `app` | `claude-code` | `codex` | `antigravity` |
+| At work | `working` | not seen | not seen |
+| Permission prompt | `blocked`, `kind: permission`, `msg: "approve Bash: curl -sI https://example.com"` | not seen | not seen |
+| After a declined prompt | `idle` | not seen | not seen |
+| Startup trust prompt | not seen | no record at all, on "Hooks need review" | `blocked`, `kind: permission`, `msg: "Trust this folder?"` |
+| Failed turn | not seen | `error` | not seen |
+| Sub-agent | a child record: `id` is the sub-agent's id, `title` its description, `state: working` | not seen | not seen |
+
+- A Codex stopped on its hooks prompt has no status record, so it reads as
+  `starting` until someone answers.
+- Claude Code's status passes through a pty relay unchanged: a session
+  attached with `claude-inbox attach` reports the same records, with the
+  relay's process as `owner`.
+- Claude Code draws on the alternate screen (`modes` returns `"screen":
+  "alternate"`), so `rex capture` gives the visible screen and little else.
+
+## Session ids
+
+- Claude Code accepts `--session-id UUID` and `--name` at start.
+- Codex has no start flag for a session id or name. `codex resume` takes a
+  session id or a session name.
+- agy resumes with `--conversation ID` and has no start flag for choosing it.
+
+For Codex and agy the recipe learns the id after the start, from the files
+each harness writes, matched on the agent's directory and start time:
+
+- Codex writes `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, whose first
+  line holds the session's `id`, `cwd` and `timestamp`.
+- agy writes `~/.gemini/antigravity-cli/log/cli-YYYYMMDD_HHMMSS.log` for
+  every run, named for its start in local time, with the workspace and a
+  `Created conversation ID` line. Its `conversation_summaries.db` is no use:
+  `sqlite3 -readonly` fails to open it, and it leaves `workspace_uris` empty
+  for a short conversation.
 
 ## Versions and environment
 
@@ -32,19 +106,6 @@ revision 10, unless it says otherwise.
   label restores the default made from the window's id.
 - `server.status` gives `host_id`, which stays the same across restarts, and
   `instance_id`, which is new for every server process.
-
-## The CLI
-
-- A `rex api call` took about 20 ms here.
-- `-s` takes a session's id or label and attaches before the call, which
-  every session method needs.
-- A failed call prints
-  `Error: stream response "control-3" failed: MESSAGE (status=404 code=not_found)`
-  on stderr. It exits 1 for `bad_request` and `not_supported`, and 3 for
-  `not_found`. The CLI's own lookup prints `Error: session target "x" not
-  found`, with no code, and also exits 3.
-- `rex capture --unwrap` joins soft-wrapped lines, so a long link comes back
-  on one line.
 
 ## OSC 7501
 
@@ -241,3 +302,10 @@ with Focus Follows Mouse off.
   `rex.wait` are nil, and `rex.on` warns without registering), so the
   snippet starts `agent-inbox hold-focus` with `rex.exec.start(..., { detach = true })`
   to watch for that bounce for up to one second and refocus the target once.
+
+## Not checked yet
+
+- `done`, and the `question` and `auth` kinds, for any harness.
+- `working` and `idle` for Codex and agy.
+- What `rex capture` returns for agy.
+- `claude --resume` in a new block.
