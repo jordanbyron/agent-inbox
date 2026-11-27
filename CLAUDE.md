@@ -18,7 +18,8 @@ shared checkout: other sessions commit there concurrently.
 
 - The program is `cmd/agent-inbox/main.go` plus packages under `internal/`,
   one per concern, each named for what it holds (`triage`, `state`, `rex`).
-  No `util` or `common` package.
+  No `util` or `common` package. `cmd/release` is the maintainer's release
+  tool behind `bin/release`, not part of the program.
 - A package that needs something from outside (Rex, `gh`, git, the clock)
   declares the small interface it uses and takes it as an argument. Tests
   pass a fake; there is no mocking library.

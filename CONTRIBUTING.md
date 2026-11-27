@@ -67,3 +67,27 @@ go tool -modfile=tools/go.mod golangci-lint fmt        # fix formatting
 go tool -modfile=tools/go.mod golangci-lint run --fix  # lint, fixing what it can
 gh signoff status                             # is HEAD signed off?
 ```
+
+## Cutting a release
+
+Releases are git tags; there's no version file. Go stamps the tag into the
+binary, so `agent-inbox version` prints it for a build of a tagged, clean
+checkout, or for `go install …@vX.Y.Z`. On `main` with a clean tree that
+matches `origin/main`:
+
+```sh
+bin/release --dry-run   # show the version it would release
+bin/release
+```
+
+The version comes from the conventional-commit prefixes since the last `v*`
+tag: `feat` is a minor bump, `fix` a patch, and `!` or a `BREAKING CHANGE:`
+footer a major bump (a minor one while we're on 0.x). With no `feat` or `fix`,
+there's nothing to release. The first release is `v0.1.0`.
+
+GitHub generates the notes and groups them by label, as `.github/release.yml`
+lays out. Before tagging, `bin/release` gives every PR merged since the last
+tag the label its title's prefix calls for. A title with no prefix, such as
+one GitHub filled in from the branch, takes the label of its commits'
+highest-ranked prefix. Then it pushes the tag and runs
+`gh release create --generate-notes`.
