@@ -226,7 +226,8 @@ session, Model, Effort, Permissions and Worktree.
   does today.
 - Directory opens a list of the directories under the typed path, filtered
   by what is typed after the last `/`, with recent directories first until
-  the path is edited.
+  the path is edited. `Enter` moves into the list; `↑` and `↓` on the path move
+  between fields as they do everywhere else.
 - Directory starts on the one last chosen in the form, kept in
   `state.json`, or the current directory before any is chosen or once it is
   gone. `--cwd` overrides it.

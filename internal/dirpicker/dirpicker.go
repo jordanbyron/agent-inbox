@@ -115,7 +115,8 @@ func (p Picker) rowNamed(name string) int {
 }
 
 // Press handles a key while the field has focus, and reports false for
-// one the form should handle instead.
+// one the form should handle instead. Up and Down on the text move between
+// fields as they do everywhere else; Enter opens the list.
 func (p *Picker) Press(key, text string) bool {
 	if key == "enter" && p.takeRecent() {
 		return false
@@ -127,7 +128,7 @@ func (p *Picker) Press(key, text string) bool {
 		p.inList = false
 	}
 	switch key {
-	case "down":
+	case "enter":
 		if len(p.rows()) == 0 {
 			return false
 		}
@@ -149,7 +150,7 @@ func (p *Picker) Press(key, text string) bool {
 			return p.text.Press(key, text)
 		}
 		p.moveTo(filepath.Dir(p.Dir()))
-	case "up", "enter", "esc", "shift+tab":
+	case "up", "down", "esc", "shift+tab":
 		return false
 	default:
 		return p.edit(key, text)

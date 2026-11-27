@@ -105,9 +105,12 @@ func (p Picker) Hints() []string {
 	if p.inList {
 		return []string{"⏎", "open", "←", "parent", "⇥", "pick", "esc", "back"}
 	}
-	hints := []string{"⇥", "next", "↓", "browse"}
+	hints := []string{"⇥", "next"}
 	if p.Completes() {
 		hints[1] = "complete"
+	}
+	if len(p.rows()) > 0 {
+		hints = append(hints, "⏎", "browse")
 	}
 	if p.showRecents() {
 		hints = append(hints, "^U", "recent")

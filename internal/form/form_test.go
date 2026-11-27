@@ -32,6 +32,8 @@ func TestMovingBetweenFields(t *testing.T) {
 		{"down leaves a one-row prompt", []string{"down"}, "Harness"},
 		{"enter moves on from a field", []string{"tab", "enter"}, "Name"},
 		{"Tab on a directory that needs no completing moves on", []string{"tab", "tab", "tab", "tab"}, "Rex"},
+		{"down moves on from the directory", []string{"tab", "tab", "tab", "down"}, "Rex"},
+		{"up moves back from the directory", []string{"tab", "tab", "tab", "up"}, "Name"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -239,7 +241,7 @@ func TestDirectoryList(t *testing.T) {
 
 	t.Run("Worktree follows the directory browsed to", func(t *testing.T) {
 		s := newScreen(t, 100, 30).typing("do it").press("tab", "tab", "tab")
-		s.press("down", "left")
+		s.press("enter", "left")
 		require.Contains(t, s.lineWith("Directory"), "~/code/")
 		require.Empty(t, s.lineWith("Worktree"), "~/code is not a git repository")
 		s.press("down", "enter")
@@ -250,14 +252,14 @@ func TestDirectoryList(t *testing.T) {
 	})
 
 	t.Run("Enter on a recent takes it and moves on", func(t *testing.T) {
-		s := newScreen(t, 100, 30, recents).typing("do it").press("tab", "tab", "tab", "down", "down", "enter")
+		s := newScreen(t, 100, 30, recents).typing("do it").press("tab", "tab", "tab", "enter", "down", "enter")
 		require.Equal(t, "Rex", s.focusedLabel())
 		s.press("ctrl+s")
 		require.Equal(t, filepath.Join(s.home, "notes"), s.result().Dir)
 	})
 
 	t.Run("Esc leaves the list before it cancels", func(t *testing.T) {
-		s := newScreen(t, 100, 30).typing("h").press("tab", "tab", "tab", "down", "esc")
+		s := newScreen(t, 100, 30).typing("h").press("tab", "tab", "tab", "enter", "esc")
 		require.Contains(t, s.frame(), "New agent")
 		require.Contains(t, s.footer(), "esc cancel")
 		s.press("esc")

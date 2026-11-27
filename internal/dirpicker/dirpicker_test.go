@@ -183,7 +183,7 @@ func TestRows(t *testing.T) {
 func TestBrowsing(t *testing.T) {
 	t.Run("Enter descends into a row and highlights its first directory", func(t *testing.T) {
 		d := open(t, "/home/code")
-		d.press("down", "down", "enter")
+		d.press("enter", "down", "enter")
 		require.Equal(t, "~/code/app/", d.text())
 		require.Equal(t, []string{"..", "▶ src/"}, d.rows())
 		require.Equal(t, "/home/code/app", d.p.Dir())
@@ -191,20 +191,20 @@ func TestBrowsing(t *testing.T) {
 
 	t.Run("Right descends as Enter does", func(t *testing.T) {
 		d := open(t, "/home/code")
-		d.press("down", "down", "down", "right")
+		d.press("enter", "down", "down", "right")
 		require.Equal(t, "~/code/Apricot/", d.text())
 	})
 
 	t.Run("Left goes to the parent and highlights the directory it left", func(t *testing.T) {
 		d := open(t, "/home/code/app")
-		d.press("down", "left")
+		d.press("enter", "left")
 		require.Equal(t, "~/code/", d.text())
 		require.Contains(t, d.rows(), "▶ app/ git")
 	})
 
 	t.Run("Enter on .. goes to the parent", func(t *testing.T) {
 		d := open(t, "/home/code")
-		d.press("down", "enter")
+		d.press("enter", "enter")
 		require.Equal(t, "~/", d.text())
 		require.Contains(t, d.rows(), "▶ code/")
 	})
@@ -221,19 +221,30 @@ func TestBrowsing(t *testing.T) {
 		require.Equal(t, "~/code/a", d.text())
 	})
 
-	t.Run("Down and Up move between the text and the list", func(t *testing.T) {
+	t.Run("Enter opens the list and Up from its top leaves it", func(t *testing.T) {
 		d := open(t, "/home/code")
-		d.press("down")
+		d.press("enter")
 		require.True(t, d.p.InList())
 		require.Equal(t, "▶ ..", d.rows()[0])
 		d.press("down", "up", "up")
 		require.False(t, d.p.InList())
-		require.False(t, d.press("up"), "Up from the text is the form's")
+	})
+
+	t.Run("Up and Down from the text are the form's", func(t *testing.T) {
+		d := open(t, "/home/code")
+		require.False(t, d.press("down"))
+		require.False(t, d.press("up"))
+		require.False(t, d.p.InList())
+	})
+
+	t.Run("Enter with nothing to list is the form's", func(t *testing.T) {
+		d := open(t, "/home/code").typing("/zzz")
+		require.False(t, d.press("enter"))
 	})
 
 	t.Run("typing in the list goes back to the text", func(t *testing.T) {
 		d := open(t, "/home/code")
-		d.press("down", "/", "b")
+		d.press("enter", "/", "b")
 		require.False(t, d.p.InList())
 		require.Equal(t, "~/code/b", d.text())
 	})
@@ -255,7 +266,7 @@ func TestTab(t *testing.T) {
 
 	t.Run("takes the highlighted row from the list", func(t *testing.T) {
 		d := open(t, "/home/code")
-		require.True(t, d.press("down", "down", "tab"))
+		require.True(t, d.press("enter", "down", "tab"))
 		require.Equal(t, "~/code/app/", d.text())
 		require.False(t, d.p.InList())
 		require.False(t, d.press("tab"))
@@ -265,7 +276,7 @@ func TestTab(t *testing.T) {
 func TestCtrlU(t *testing.T) {
 	t.Run("jumps to the recents", func(t *testing.T) {
 		d := open(t, "/home/code", "/home/notes")
-		d.press("down", "down", "ctrl+u")
+		d.press("enter", "down", "ctrl+u")
 		require.Equal(t, "▶ ~/notes", d.rows()[1])
 		require.False(t, d.press("enter"), "Enter on a recent is the form's, to move on")
 		require.Equal(t, "~/notes/", d.text())
@@ -288,7 +299,7 @@ func TestCtrlU(t *testing.T) {
 
 func TestEscape(t *testing.T) {
 	d := open(t, "/home/code")
-	d.press("down")
+	d.press("enter")
 	require.True(t, d.press("esc"))
 	require.False(t, d.p.InList())
 	require.False(t, d.press("esc"), "Esc from the text is the form's")
