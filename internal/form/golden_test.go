@@ -61,7 +61,7 @@ var frames = []struct {
 	{name: "recipe_agy", drive: func(s *screen) { s.press("tab", "l", "l") }},
 	{name: "dir_browse", configure: projects, drive: func(s *screen) {
 		toDirectory(s)
-		s.press("down", "left")
+		s.press("enter", "left")
 	}},
 	{name: "dir_recents", configure: recents, drive: toDirectory},
 	{name: "dir_filter", configure: projects, drive: func(s *screen) {
