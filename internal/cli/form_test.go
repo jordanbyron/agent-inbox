@@ -51,6 +51,36 @@ func TestTheFormStartsInThePanesSession(t *testing.T) {
 	require.Equal(t, "fake", opts.Recipes[0].Name)
 }
 
+func TestTheFormStartsInTheLastDirectoryChosen(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	last, given := t.TempDir(), t.TempDir()
+	cases := []struct {
+		name     string
+		remember string
+		dir      string
+		want     string
+	}{
+		{"the current directory before any is chosen", "", "", cwd},
+		{"the last directory chosen", last, "", last},
+		{"the current directory once the last is gone", filepath.Join(last, "gone"), "", cwd},
+		{"the directory given over the last chosen", last, given, given},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			if tc.remember != "" {
+				require.NoError(t, cli.RememberDir(f.inbox, tc.remember))
+			}
+
+			opts, err := cli.FormOptions(t.Context(), f.inbox, verbs.StartRequest{Dir: tc.dir}, io.Discard)
+
+			require.NoError(t, err)
+			require.Equal(t, tc.want, opts.Dir)
+		})
+	}
+}
+
 func TestTheFormsChoicesAreWhatStarts(t *testing.T) {
 	result := form.Result{
 		Prompt: "fix it", Harness: "codex", Dir: "/r/app", Session: "session:1",

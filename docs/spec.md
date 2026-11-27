@@ -227,8 +227,12 @@ session, Model, Effort, Permissions and Worktree.
 - Directory opens a list of the directories under the typed path, filtered
   by what is typed after the last `/`, with recent directories first until
   the path is edited.
-- `Tab` moves between fields, `Ctrl-S` starts the agent and `Ctrl-O` starts
-  it and shows its tab.
+- Directory starts on the one last chosen in the form, kept in
+  `state.json`, or the current directory before any is chosen or once it is
+  gone. `--cwd` overrides it.
+- `Tab` moves between fields and on to a Start button, where `Enter` starts
+  the agent. `Ctrl-S` starts it from any field and `Ctrl-O` starts it and
+  shows its tab.
 - An empty Name is filled from the prompt's first sentence, cut at a word to
   fit a tab. No model is asked. The name is for people: it titles the tab
   and the inbox row until the harness gives a title of its own, and the
