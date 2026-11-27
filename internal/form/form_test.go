@@ -226,6 +226,13 @@ func TestDirectoryList(t *testing.T) {
 		require.Equal(t, filepath.Join(s.home, "code", "site"), s.result().Dir)
 	})
 
+	t.Run("Enter on a recent takes it and moves on", func(t *testing.T) {
+		s := newScreen(t, 100, 30, recents).typing("do it").press("tab", "tab", "tab", "down", "down", "enter")
+		require.Equal(t, "Rex", s.focusedLabel())
+		s.press("ctrl+s")
+		require.Equal(t, filepath.Join(s.home, "notes"), s.result().Dir)
+	})
+
 	t.Run("Esc leaves the list before it cancels", func(t *testing.T) {
 		s := newScreen(t, 100, 30).typing("h").press("tab", "tab", "tab", "down", "esc")
 		require.Contains(t, s.frame(), "New agent")
