@@ -417,7 +417,8 @@ leaves out, most of it with a live test. This spec leans on these:
 - A focus change emits only `session_view_changed`. On Rex API revision 10
   the session's `active_window_id` doesn't follow the app either, so "seen"
   is read from the `size_changed` event an app sends for each block it
-  displays. [rex-client-notes.md](rex-client-notes.md) has the details.
+  displays. [rex-quirks.md](rex-quirks.md#which-tab-an-app-shows) has the
+  details.
 - Lua in `init.lua` runs with the Rex server's environment, whose `PATH`
   lacks most tools (inferred there, not tested). `agent-inbox lua` writes
   the binary's absolute path into the snippet.
@@ -449,7 +450,7 @@ claude-inbox stays as it is, for people who aren't in Rex.
 
 ## Build order
 
-Each step is one pull request unless noted. Steps 0 and 1 are done.
+Each step was one pull request unless noted. All of them have shipped.
 
 0. The spike, written up as [rex-quirks.md](rex-quirks.md).
 1. Repository, Go module, a `version` command and local CI with signoff.
@@ -464,7 +465,8 @@ Each step is one pull request unless noted. Steps 0 and 1 are done.
 9. The form, in three pull requests: fields, prompt editor, paste and menu.
 10. Pull requests: worktree branches, the capture fallback, auto-settle.
 11. Families.
-12. Notifications, reap, the Lua snippet and the README.
+12. Reap, the Lua snippet and the README. Notifications were dropped,
+    since Rex already notifies.
 
 ## Alternatives considered
 
@@ -481,17 +483,15 @@ Each step is one pull request unless noted. Steps 0 and 1 are done.
 
 ## Open questions
 
-1. How does a recipe learn the session id of a Codex or agy it just
-   started? Neither takes one at start, and restore needs it.
-2. Is there a way to get every block's status in one call? `rex api list`
+1. Is there a way to get every block's status in one call? `rex api list`
    shows none, so the watcher asks each block once at startup.
-3. Rex's roadmap lists "a unified priority inbox view". If it ships, how
+2. Rex's roadmap lists "a unified priority inbox view". If it ships, how
    much of the list do we keep? Triage, pull requests and worktrees are the
    parts least likely to be covered.
-4. Should a found agent become a launched one on first triage, by labeling
+3. Should a found agent become a launched one on first triage, by labeling
    its block and writing a record? Left out of v1 because we can't learn the
    harness's session id from outside, so it could never be restored.
-5. How should a fresh worktree get the files git doesn't track (`.env`,
+4. How should a fresh worktree get the files git doesn't track (`.env`,
    installed dependencies)? A per-repository setup command is the obvious
    answer and isn't in v1.
 
@@ -521,3 +521,5 @@ lists what is still unchecked.
 - 2026-11-23: first draft, then rexuikit added as prior art.
 - 2026-11-23: spike results. agy is a built-in recipe, rexuikit is not a
   dependency, and the build order starts from a scaffold.
+- 2026-11-27: the build order has shipped, Codex's and agy's session ids
+  come from their own files, and the client notes fold into rex-quirks.md.
