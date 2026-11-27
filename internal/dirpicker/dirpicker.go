@@ -117,6 +117,9 @@ func (p Picker) rowNamed(name string) int {
 // Press handles a key while the field has focus, and reports false for
 // one the form should handle instead.
 func (p *Picker) Press(key, text string) bool {
+	if key == "enter" && p.takeRecent() {
+		return false
+	}
 	if p.inList {
 		if p.pressList(key) {
 			return true
@@ -188,6 +191,16 @@ func (p *Picker) pressList(key string) bool {
 	default:
 		return false
 	}
+	return true
+}
+
+func (p *Picker) takeRecent() bool {
+	rows := p.rows()
+	if !p.inList || p.pick >= len(rows) || !rows[p.pick].recent {
+		return false
+	}
+	p.moveTo(rows[p.pick].path)
+	p.inList = false
 	return true
 }
 

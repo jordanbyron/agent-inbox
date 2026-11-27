@@ -267,8 +267,16 @@ func TestCtrlU(t *testing.T) {
 		d := open(t, "/home/code", "/home/notes")
 		d.press("down", "down", "ctrl+u")
 		require.Equal(t, "▶ ~/notes", d.rows()[1])
-		d.press("enter")
+		require.False(t, d.press("enter"), "Enter on a recent is the form's, to move on")
 		require.Equal(t, "~/notes/", d.text())
+		require.False(t, d.p.InList())
+	})
+
+	t.Run("Right browses into a recent", func(t *testing.T) {
+		d := open(t, "/home/code", "/home/notes")
+		d.press("ctrl+u", "right")
+		require.Equal(t, "~/notes/", d.text())
+		require.True(t, d.p.InList())
 	})
 
 	t.Run("clears the text with no recents to show", func(t *testing.T) {
