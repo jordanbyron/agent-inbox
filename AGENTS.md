@@ -1,8 +1,9 @@
 # agent-inbox
 
 A Go CLI and TUI that triages coding agents running in Rex.
-[docs/spec.md](docs/spec.md) is the design; read it before touching
-`internal/`.
+[docs/rex-quirks.md](docs/rex-quirks.md) records what Rex and the harnesses
+were seen to do; read it before relying on Rex behavior, and add to it when
+you find more.
 
 ## Submitting a PR
 
