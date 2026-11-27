@@ -21,9 +21,6 @@ type Config struct {
 	Sort string `toml:"sort"`
 	// FoldWorking folds agents at work into the Working section.
 	FoldWorking bool `toml:"fold_working"`
-	// Notify sends a desktop notification when a family starts needing
-	// you or finishes.
-	Notify bool `toml:"notify"`
 	// Reap deletes families settled for 14 days.
 	Reap bool `toml:"reap"`
 	// Worktree is how agent-inbox makes an agent's worktree.

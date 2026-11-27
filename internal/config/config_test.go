@@ -41,7 +41,6 @@ func TestLoadMissingFileIsTheDefaults(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "default", cfg.Sort)
 	require.False(t, cfg.FoldWorking)
-	require.False(t, cfg.Notify)
 	require.False(t, cfg.Reap)
 	require.Equal(t, config.Worktree{
 		Default: true,
@@ -56,7 +55,6 @@ func TestLoadOverrides(t *testing.T) {
 	path := write(t, `
 sort = "activity"
 fold_working = true
-notify = true
 reap = true
 
 [worktree]
@@ -70,7 +68,6 @@ base = "head"
 	require.NoError(t, err)
 	require.Equal(t, "activity", cfg.Sort)
 	require.True(t, cfg.FoldWorking)
-	require.True(t, cfg.Notify)
 	require.True(t, cfg.Reap)
 	require.Equal(t, config.Worktree{
 		Default: false,
@@ -137,7 +134,7 @@ func TestLoadErrors(t *testing.T) {
 		{name: "unknown recipe key", toml: "[recipes.x]\napp = \"x\"\nstart = [\"x\"]\nresume = [\"x\"]\nbegin = []", want: "unknown key recipes.x.begin"},
 		{name: "bad sort", toml: `sort = "newest"`, want: `sort: "newest" is not one of`},
 		{name: "bad base", toml: "[worktree]\nbase = \"main\"", want: `worktree.base: "main" is not one of`},
-		{name: "wrong type", toml: `notify = "yes"`, want: "notify"},
+		{name: "wrong type", toml: `reap = "yes"`, want: "reap"},
 		{name: "bad path placeholder", toml: "[worktree]\npath = \"{root}/{name}\"", want: "worktree.path: unknown placeholder {root}"},
 		{name: "empty branch", toml: "[worktree]\nbranch = \"\"", want: "worktree.branch: is empty"},
 		{name: "bad recipe placeholder", toml: "[recipes.x]\napp = \"x\"\nstart = [\"x\", \"{sesion_id}\"]\nresume = [\"x\"]", want: "recipes.x.start: unknown placeholder {sesion_id}"},

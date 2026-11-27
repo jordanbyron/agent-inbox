@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
-	"github.com/jordanbyron/agent-inbox/internal/notify"
 	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
 	"github.com/jordanbyron/agent-inbox/internal/rex/rextest"
@@ -175,31 +174,17 @@ func (b *syncBuffer) String() string {
 // harness is one watcher running against a fake Rex server, a fake gh, a
 // manual clock and a temporary state directory.
 type harness struct {
-	t        *testing.T
-	rex      *rextest.Fake
-	gh       *fakeGH
-	clock    *manualClock
-	dir      string
-	home     string
-	store    *state.Store
-	log      *syncBuffer
-	done     chan error
-	cfg      config.Config
-	notifier *fakeNotifier
-	deleter  reap.Deleter
-}
-
-type fakeNotifier struct {
-	sent chan notify.Notification
-}
-
-func newFakeNotifier() *fakeNotifier {
-	return &fakeNotifier{sent: make(chan notify.Notification, 16)}
-}
-
-func (f *fakeNotifier) Notify(_ context.Context, n notify.Notification) error {
-	f.sent <- n
-	return nil
+	t       *testing.T
+	rex     *rextest.Fake
+	gh      *fakeGH
+	clock   *manualClock
+	dir     string
+	home    string
+	store   *state.Store
+	log     *syncBuffer
+	done    chan error
+	cfg     config.Config
+	deleter reap.Deleter
 }
 
 func newHarness(t *testing.T) *harness {
@@ -234,9 +219,6 @@ func (h *harness) start() {
 		Version:  "v-test",
 		Log:      slog.New(slog.NewTextHandler(h.log, nil)),
 		Deleter:  h.deleter,
-	}
-	if h.notifier != nil {
-		opts.Notifier = h.notifier
 	}
 	go func() { h.done <- watcher.Run(ctx, opts) }()
 	h.t.Cleanup(func() {

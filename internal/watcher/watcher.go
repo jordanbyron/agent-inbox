@@ -65,8 +65,6 @@ type Options struct {
 	Version string
 	// Log is where the watcher says what it did; nil discards it.
 	Log *slog.Logger
-	// Notifier sends what Config.Notify asks for; nil sends nothing.
-	Notifier Notifier
 	// Deleter deletes what Config.Reap reaps; nil reaps nothing.
 	Deleter reap.Deleter
 }

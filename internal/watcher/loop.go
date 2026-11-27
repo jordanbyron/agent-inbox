@@ -13,7 +13,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
-	"github.com/jordanbyron/agent-inbox/internal/notify"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
 	"github.com/jordanbyron/agent-inbox/internal/reap"
 	"github.com/jordanbyron/agent-inbox/internal/rex"
@@ -55,11 +54,6 @@ type watcher struct {
 	lastBody []byte
 	wroteAt  time.Time
 
-	notifier Notifier
-	// moments are the families at the last observation, nil before the first.
-	moments map[string]moment
-	notes   chan notify.Notification
-
 	reaper   *reap.Reaper
 	lastReap time.Time
 
@@ -91,10 +85,6 @@ func newWatcher(opts Options, store *state.Store) (*watcher, error) {
 		st:         st,
 		statuses:   map[string]triage.Status{},
 		unclosable: map[string]bool{},
-		notes:      make(chan notify.Notification, pendingNotifications),
-	}
-	if opts.Config.Notify {
-		w.notifier = opts.Notifier
 	}
 	if opts.Config.Reap && opts.Deleter != nil {
 		w.reaper = &reap.Reaper{Deleter: opts.Deleter}
@@ -110,9 +100,6 @@ func (w *watcher) run(ctx context.Context) error {
 	findings := make(chan finding)
 	var wg sync.WaitGroup
 	wg.Go(func() { w.finder.work(ctx, jobs, findings) })
-	if w.notifier != nil {
-		wg.Go(func() { w.sendNotifications(ctx, w.notifier) })
-	}
 
 	events, ended := w.rex.Events(ctx)
 	defer func() {
@@ -286,9 +273,6 @@ func (w *watcher) settle(ctx context.Context) {
 	now := w.clock.Now()
 	w.fillDirs(ctx)
 	w.recordAndAct(ctx, now)
-	if w.notifier != nil {
-		w.notifyChanges(now)
-	}
 	w.publish(now)
 }
 
