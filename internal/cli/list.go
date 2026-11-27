@@ -55,10 +55,12 @@ func showInbox(cmd *cobra.Command, modal bool) error {
 	if err != nil {
 		return err
 	}
-	// Rex counts a floating layer's block in the window under it, so a modal
-	// leads with that tab's agents as a split does. A list that can't place
-	// itself still works.
-	tab, _ := inbox.Tab(cmd.Context())
+	// Only a docked list leads with its tab's agents: a modal is a quick
+	// look over the whole inbox. A list that can't place itself still works.
+	var tab string
+	if !modal {
+		tab, _ = inbox.Tab(cmd.Context())
+	}
 	restart := func() error { return ensureWatcher(cmd.Context(), srv) }
 	return runList(cmd, liveList(cmd.Context(), inbox, restart, modal, tab), srv.dir)
 }

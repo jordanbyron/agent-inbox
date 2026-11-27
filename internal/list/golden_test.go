@@ -194,13 +194,11 @@ func TestGoldenModal(t *testing.T) {
 	golden.Require(t, "modal_100x30", newModal(t, 30).frame())
 }
 
-// w2 holds the login fix, which otherwise sits in Needs you. A modal over
-// that tab leads with it as the split beside it does.
+// w2 holds the login fix, which otherwise sits in Needs you. The split
+// beside it leads with it.
 func TestGoldenParked(t *testing.T) {
 	golden.Require(t, "parked_100x30", newParked(t, "w2", 100, 30).frame())
 	golden.Require(t, "parked_50x30", newParked(t, "w2", 50, 30).frame())
-	modal := openScreen(t, fixture(t), 100, 30, list.Config{Modal: true, Tab: "w2"})
-	golden.Require(t, "modal_tab_100x30", modal.frame())
 }
 
 func TestGoldenEmptyInbox(t *testing.T) {

@@ -319,10 +319,10 @@ unchanged. GitHub through `gh` is the only host in v1.
 **The list** is claude-inbox's screen: the same sections, row layout, folds
 and filter. Below 60 columns it draws one line per row (badge, label, pull
 request), which is the old Claude Code pane as a Rex split. As that pane
-led with "This session", a list in a tab with agents in it, split or
-modal, lifts them out
-of their sections into a This tab group at the top. It reads only the
-snapshot, plus Rex once at start to learn which tab it is in.
+led with "This session", a list split into a tab with agents in it lifts
+them out of their sections into a This tab group at the top; a modal
+does not. It reads only the snapshot, plus Rex once at start to learn
+which tab a split is in.
 
 Keys keep their claude-inbox meanings: `j` `k` `gg` `G`, the paging keys,
 `Tab`, `h` `za` `zo` `zc`, `Enter` `l`, `n`, `t`, `s`, `u`, `x`, `a`, `o`,
