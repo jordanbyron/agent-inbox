@@ -91,5 +91,13 @@ GitHub generates the notes and groups them by label, as `.github/release.yml`
 lays out. Before tagging, `bin/release` gives every PR merged since the last
 tag the label its title's prefix calls for. A title with no prefix, such as
 one GitHub filled in from the branch, takes the label of its commits'
-highest-ranked prefix. Then it pushes the tag and runs
-`gh release create --generate-notes`.
+highest-ranked prefix. Then it pushes the tag, runs `gh release create --generate-notes`, and
+moves the Homebrew formula in
+[jordanbyron/homebrew-tap](https://github.com/jordanbyron/homebrew-tap) to
+the new tag's source tarball. A tarball has no git metadata, so the formula
+sets the version with `-ldflags -X …/internal/cli.stampedVersion=vX.Y.Z`.
+If the tap step fails after the release is out, finish it with:
+
+```sh
+bin/release --formula vX.Y.Z
+```

@@ -15,11 +15,15 @@ type Shell interface {
 
 // Options are the flags bin/release takes.
 type Options struct {
-	DryRun bool
+	DryRun     bool
+	FormulaTag string
 }
 
 // Cut releases main's HEAD as the next tag, or with DryRun says what it would do.
 func Cut(sh Shell, out io.Writer, opts Options) error {
+	if opts.FormulaTag != "" {
+		return UpdateTap(sh, out, opts.FormulaTag)
+	}
 	if _, err := sh.Run("git", "fetch", "--quiet", "--tags", "origin"); err != nil {
 		return err
 	}
@@ -61,10 +65,16 @@ func Cut(sh Shell, out io.Writer, opts Options) error {
 		return err
 	}
 	if opts.DryRun {
-		_, err := fmt.Fprintf(out, "would release %s: %s\n", tag, reason)
+		_, err := fmt.Fprintf(out, "would release %s: %s, and move %s to it\n", tag, reason, TapRepo)
 		return err
 	}
-	return publish(sh, out, tag)
+	if err := publish(sh, out, tag); err != nil {
+		return err
+	}
+	if err := UpdateTap(sh, out, tag); err != nil {
+		return fmt.Errorf("%s is released but brew still installs the last one; finish with bin/release --formula %s: %w", tag, tag, err)
+	}
+	return nil
 }
 
 func checkReleasable(sh Shell) error {

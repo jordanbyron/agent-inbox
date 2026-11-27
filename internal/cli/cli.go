@@ -36,9 +36,16 @@ func newVersionCommand() *cobra.Command {
 	}
 }
 
+// stampedVersion is set with -ldflags -X by the Homebrew formula, whose
+// build from a release tarball has no VCS info for Go to stamp.
+var stampedVersion string
+
 // version is the one the Go toolchain stamped into the binary: a tag for
 // `go install module@v1.2.3`, a pseudo-version for a build from a checkout.
 func version() string {
+	if stampedVersion != "" {
+		return stampedVersion
+	}
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return "unknown"

@@ -26,6 +26,7 @@ func (shell) Run(name string, args ...string) (string, error) {
 func main() {
 	var opts release.Options
 	flag.BoolVar(&opts.DryRun, "dry-run", false, "show the version it would release and the labels it would add")
+	flag.StringVar(&opts.FormulaTag, "formula", "", "only move the Homebrew formula to this released `tag`")
 	flag.Parse()
 	if err := release.Cut(shell{}, os.Stdout, opts); err != nil {
 		fmt.Fprintln(os.Stderr, err)
