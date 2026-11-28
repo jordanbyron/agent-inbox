@@ -36,6 +36,7 @@ const (
 	actionDelete
 	actionFilter
 	actionEscape
+	actionRelaunch
 	actionQuit
 )
 
@@ -75,6 +76,7 @@ var bindings = []binding{
 	{keys: []string{"z c", "h"}, action: actionFoldClose},
 	{keys: []string{"/"}, action: actionFilter, footerKey: "/", footerHelp: "filter"},
 	{keys: []string{"esc"}, action: actionEscape},
+	{keys: []string{"R"}, action: actionRelaunch},
 	{keys: []string{"q", "ctrl+c"}, action: actionQuit, footerKey: "q", footerHelp: "quit"},
 }
 

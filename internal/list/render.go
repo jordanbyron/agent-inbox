@@ -430,3 +430,32 @@ func overlay(lines, box []string, screenWidth int) []string {
 func stripStyles(s string) string {
 	return ansi.Strip(s)
 }
+
+// pillRoom is the fewest rows the list keeps for agents before it gives
+// up the pill.
+const pillRoom = 3
+
+// pill offers to relaunch once a different agent-inbox is installed, in
+// rows of its own above the footer so it hides no agent.
+func (m Model) pill() []string {
+	if m.newer == "" || m.height < chromeRows+pillRoom+3 {
+		return nil
+	}
+	action := theme.KeyName("R") + " " + theme.Green.Bold(true).Render("relaunch")
+	text := theme.Green.Bold(true).Render("✓") + " agent-inbox " + m.newer + " installed   " + action
+	if theme.Width(text)+4 > m.width {
+		text = theme.Green.Bold(true).Render("✓") + " " + m.newer + "  " + action
+	}
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Green.GetForeground()).
+		Padding(0, 1).
+		MaxWidth(m.width).
+		Render(text)
+	lines := strings.Split(box, "\n")
+	left := strings.Repeat(" ", max((m.width-lipgloss.Width(box))/2, 0))
+	for i, line := range lines {
+		lines[i] = theme.Pad(left+line, m.width)
+	}
+	return lines
+}
