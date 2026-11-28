@@ -158,7 +158,7 @@ func (s Snapshot) Filter(query string) Snapshot {
 	if query == "" {
 		return s
 	}
-	out := Snapshot{WatcherVersion: s.WatcherVersion}
+	out := Snapshot{WatcherVersion: s.WatcherVersion, Latest: s.Latest}
 	for _, sec := range s.Sections {
 		kept := Section{Name: sec.Name, Rows: []Row{}}
 		for _, f := range familiesOf(sec.Rows) {

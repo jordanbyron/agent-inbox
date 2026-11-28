@@ -65,6 +65,8 @@ Settling an agent closes its tab, parked list and all.
 | `P` | link a pull request by hand (empty clears) |
 | `Ctrl-x` | delete the family, its worktrees and branches (asks `y` first) |
 | `/` | filter; `Esc` clears |
+| `U` | upgrade with Homebrew, once a pill says a new release is out |
+| `R` | relaunch, once a pill says a new agent-inbox is installed |
 | `q` | quit (`Esc` too, with `--modal`) |
 
 ## Config

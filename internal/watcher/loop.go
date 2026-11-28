@@ -57,6 +57,9 @@ type watcher struct {
 	reaper   *reap.Reaper
 	lastReap time.Time
 
+	releases Releases
+	latest   string
+
 	failedProbes int
 }
 
@@ -85,6 +88,7 @@ func newWatcher(opts Options, store *state.Store) (*watcher, error) {
 		st:         st,
 		statuses:   map[string]triage.Status{},
 		unclosable: map[string]bool{},
+		releases:   opts.Releases,
 	}
 	if opts.Config.Reap && opts.Deleter != nil {
 		w.reaper = &reap.Reaper{Deleter: opts.Deleter}
@@ -100,6 +104,10 @@ func (w *watcher) run(ctx context.Context) error {
 	findings := make(chan finding)
 	var wg sync.WaitGroup
 	wg.Go(func() { w.finder.work(ctx, jobs, findings) })
+	latest := make(chan string)
+	if w.releases != nil {
+		wg.Go(func() { w.watchReleases(ctx, latest) })
+	}
 
 	events, ended := w.rex.Events(ctx)
 	defer func() {
@@ -160,6 +168,7 @@ func (w *watcher) run(ctx context.Context) error {
 				events, ended = w.reconnect(ctx)
 			}
 			w.onTick(now)
+		case w.latest = <-latest:
 		case found := <-findings:
 			w.found = append(w.found, found)
 			if found.key == "" {
@@ -402,6 +411,7 @@ func (w *watcher) autoSettle(ctx context.Context, now time.Time) bool {
 // publish writes the snapshot when it changed or the heartbeat is due.
 func (w *watcher) publish(now time.Time) {
 	snap := snapshot.New(w.version, rows(w.agents, w.st, now, w.cfg.FoldWorking), snapshot.Sort(w.cfg.Sort))
+	snap.Latest = w.latest
 	body, err := json.Marshal(snap)
 	if err != nil {
 		w.log.Error("encoding the snapshot", "err", err)
@@ -458,4 +468,42 @@ func (w *watcher) reapDue(ctx context.Context, now time.Time) bool {
 		reaped = true
 	}
 	return reaped
+}
+
+// watchReleases asks for the newest release now and every releaseEvery
+// after, until ctx ends. One it can't learn keeps the last it did.
+func (w *watcher) watchReleases(ctx context.Context, latest chan<- string) {
+	ticker := w.clock.NewTicker(tickEvery)
+	defer ticker.Stop()
+	var asked time.Time
+	for {
+		if now := w.clock.Now(); asked.IsZero() || now.Sub(asked) >= releaseEvery {
+			asked = now
+			if tag, ok := w.askRelease(ctx); ok {
+				select {
+				case latest <- tag:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C():
+		}
+	}
+}
+
+func (w *watcher) askRelease(ctx context.Context) (string, bool) {
+	ctx, cancel := context.WithTimeout(ctx, findTimeout)
+	defer cancel()
+	tag, err := w.releases.Latest(ctx)
+	if err != nil {
+		if !errors.Is(ctx.Err(), context.Canceled) {
+			w.log.Warn("asking for the latest release", "err", err)
+		}
+		return "", false
+	}
+	return tag, true
 }

@@ -36,6 +36,7 @@ const (
 	// the title it has given the conversation.
 	titleScanEvery = 30 * time.Second
 	reapEvery      = 10 * time.Minute
+	releaseEvery   = time.Hour
 	// serverProbes is how many times running, a tick apart, the server
 	// must fail to answer before the watcher takes it as gone. A sleep and
 	// wake or a hiccup ends the event stream too.
@@ -67,6 +68,8 @@ type Options struct {
 	Log *slog.Logger
 	// Deleter deletes what Config.Reap reaps; nil reaps nothing.
 	Deleter reap.Deleter
+	// Releases is asked for the newest release; nil never asks.
+	Releases Releases
 }
 
 // Run takes the watcher lock and watches Rex until ctx ends or the Rex

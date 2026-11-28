@@ -24,6 +24,8 @@ var Order = []triage.Section{
 // Snapshot is one moment of the inbox, as the watcher saw it.
 type Snapshot struct {
 	WatcherVersion string `json:"version"`
+	// Latest is the newest agent-inbox release, as the watcher last heard.
+	Latest string `json:"latest,omitempty"`
 	// Sections are in Order, each with its rows already sorted.
 	Sections []Section `json:"sections"`
 }

@@ -430,3 +430,48 @@ func overlay(lines, box []string, screenWidth int) []string {
 func stripStyles(s string) string {
 	return ansi.Strip(s)
 }
+
+// pillRoom is the fewest rows the list keeps for agents before it gives
+// up the pill.
+const pillRoom = 3
+
+// pill offers the newest release, and to relaunch once a different
+// agent-inbox is installed, in rows of its own above the footer so it
+// hides no agent.
+func (m Model) pill() []string {
+	if m.height < chromeRows+pillRoom+3 {
+		return nil
+	}
+	switch {
+	case m.newer != "":
+		return m.drawPill(theme.Green, "✓", m.newer, "installed", "R", "relaunch")
+	case m.released() && m.upgrade == nil:
+		return m.drawPill(theme.Blue, "↑", m.snap.Latest, "available", "", "")
+	case m.released():
+		return m.drawPill(theme.Blue, "↑", m.snap.Latest, "available", "U", "upgrade")
+	}
+	return nil
+}
+
+func (m Model) drawPill(hue lipgloss.Style, glyph, version, news, key, what string) []string {
+	action := ""
+	if key != "" {
+		action = "   " + theme.KeyName(key) + " " + hue.Bold(true).Render(what)
+	}
+	text := hue.Bold(true).Render(glyph) + " agent-inbox " + version + " " + news + action
+	if theme.Width(text)+4 > m.width {
+		text = hue.Bold(true).Render(glyph) + " " + version + strings.TrimPrefix(action, " ")
+	}
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(hue.GetForeground()).
+		Padding(0, 1).
+		MaxWidth(m.width).
+		Render(text)
+	lines := strings.Split(box, "\n")
+	left := strings.Repeat(" ", max((m.width-lipgloss.Width(box))/2, 0))
+	for i, line := range lines {
+		lines[i] = theme.Pad(left+line, m.width)
+	}
+	return lines
+}

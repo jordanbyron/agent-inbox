@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -14,6 +15,7 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/list"
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
 	"github.com/jordanbyron/agent-inbox/internal/state"
+	"github.com/jordanbyron/agent-inbox/internal/upgrade"
 	"github.com/jordanbyron/agent-inbox/internal/verbs"
 )
 
@@ -32,7 +34,8 @@ func newListCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				return runList(cmd, m, "")
+				_, err = runList(cmd, m, "")
+				return err
 			}
 			return showInbox(cmd, modal)
 		},
@@ -62,12 +65,31 @@ func showInbox(cmd *cobra.Command, modal bool) error {
 		tab, _ = inbox.Tab(cmd.Context())
 	}
 	restart := func() error { return ensureWatcher(cmd.Context(), srv) }
-	return runList(cmd, liveList(cmd.Context(), inbox, restart, modal, tab), srv.dir)
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("finding this binary: %w", err)
+	}
+	installed := upgrade.New(exe, version(), upgrade.AskBinary)
+	c := liveList(cmd.Context(), inbox, restart, modal, tab)
+	c.Version, c.Installed = version(), installed.Version
+	if brew, ok := upgrade.Homebrew(exe); ok {
+		c.Upgrade = func() error { return upgrade.BrewUpgrade(brew) }
+	}
+	relaunch, err := runList(cmd, list.New(c), srv.dir)
+	if err != nil || !relaunch {
+		return err
+	}
+	// The new binary takes this process, and its terminal, as it stands.
+	if err := syscall.Exec(exe, os.Args, os.Environ()); err != nil {
+		return fmt.Errorf("relaunching %s: %w", exe, err)
+	}
+	return nil
 }
 
-// runList shows the list until it quits. With a state directory, a new
-// snapshot there reloads it at once rather than on the next tick.
-func runList(cmd *cobra.Command, m list.Model, stateDir string) error {
+// runList shows the list until it quits, and reports whether it quit to be
+// relaunched. With a state directory, a new snapshot there reloads it at
+// once rather than on the next tick.
+func runList(cmd *cobra.Command, m list.Model, stateDir string) (relaunch bool, err error) {
 	// The program detects the terminal's color profile and NO_COLOR,
 	// and brings the list's colors down to match.
 	program := tea.NewProgram(m, tea.WithContext(cmd.Context()),
@@ -76,10 +98,12 @@ func runList(cmd *cobra.Command, m list.Model, stateDir string) error {
 		stop := reloadOnSnapshot(stateDir, program)
 		defer stop()
 	}
-	if _, err := program.Run(); err != nil {
-		return fmt.Errorf("running the list: %w", err)
+	final, err := program.Run()
+	if err != nil {
+		return false, fmt.Errorf("running the list: %w", err)
 	}
-	return nil
+	m, ok := final.(list.Model)
+	return ok && m.Relaunching(), nil
 }
 
 // reloadOnSnapshot tells the program each time the watcher replaces
@@ -110,8 +134,8 @@ func reloadOnSnapshot(dir string, program *tea.Program) (stop func()) {
 }
 
 // liveList draws the watcher's snapshot, with each key running a verb.
-func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, modal bool, tab string) list.Model {
-	return list.New(list.Config{
+func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, modal bool, tab string) list.Config {
+	return list.Config{
 		Load: func() (snapshot.Snapshot, time.Time, error) {
 			var snap snapshot.Snapshot
 			writtenAt, err := inbox.Store.ReadSnapshot(&snap)
@@ -123,7 +147,7 @@ func liveList(ctx context.Context, inbox *verbs.Inbox, restart func() error, mod
 		Restart: restart,
 		Modal:   modal,
 		Tab:     tab,
-	})
+	}
 }
 
 // fixtureList draws the fixture as if it were just written, with the clock
