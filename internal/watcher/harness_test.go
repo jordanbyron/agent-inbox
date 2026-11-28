@@ -185,6 +185,8 @@ type harness struct {
 	done    chan error
 	cfg     config.Config
 	deleter reap.Deleter
+	// releases, when set, answers the watcher's asks for the latest release.
+	releases watcher.Releases
 }
 
 func newHarness(t *testing.T) *harness {
@@ -219,6 +221,7 @@ func (h *harness) start() {
 		Version:  "v-test",
 		Log:      slog.New(slog.NewTextHandler(h.log, nil)),
 		Deleter:  h.deleter,
+		Releases: h.releases,
 	}
 	go func() { h.done <- watcher.Run(ctx, opts) }()
 	h.t.Cleanup(func() {

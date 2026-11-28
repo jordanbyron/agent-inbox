@@ -11,6 +11,7 @@ import (
 
 	"github.com/jordanbyron/agent-inbox/internal/config"
 	"github.com/jordanbyron/agent-inbox/internal/pulls"
+	"github.com/jordanbyron/agent-inbox/internal/upgrade"
 	"github.com/jordanbyron/agent-inbox/internal/watcher"
 	"github.com/jordanbyron/agent-inbox/internal/worktree"
 )
@@ -60,6 +61,7 @@ func newWatchCommand() *cobra.Command {
 				Version:  version(),
 				Log:      logger,
 				Deleter:  deleter,
+				Releases: upgrade.GitHub{},
 			})
 		},
 	}

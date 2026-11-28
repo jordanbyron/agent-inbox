@@ -23,6 +23,11 @@ type Rex interface {
 	Events(ctx context.Context) (<-chan rex.Event, <-chan error)
 }
 
+// Releases says what the newest agent-inbox release is.
+type Releases interface {
+	Latest(ctx context.Context) (string, error)
+}
+
 // Clock is where the watcher gets the time, so a test can move it by hand.
 type Clock interface {
 	Now() time.Time

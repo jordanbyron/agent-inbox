@@ -29,7 +29,7 @@ func arrange(snap snapshot.Snapshot, tab string) snapshot.Snapshot {
 		return snap
 	}
 	here := snapshot.Section{Name: sectionTab}
-	out := snapshot.Snapshot{WatcherVersion: snap.WatcherVersion, Sections: []snapshot.Section{{}}}
+	out := snapshot.Snapshot{WatcherVersion: snap.WatcherVersion, Latest: snap.Latest, Sections: []snapshot.Section{{}}}
 	for _, sec := range snap.Sections {
 		rest := snapshot.Section{Name: sec.Name}
 		for _, row := range sec.Rows {

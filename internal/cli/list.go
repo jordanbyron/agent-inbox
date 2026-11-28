@@ -72,6 +72,9 @@ func showInbox(cmd *cobra.Command, modal bool) error {
 	installed := upgrade.New(exe, version(), upgrade.AskBinary)
 	c := liveList(cmd.Context(), inbox, restart, modal, tab)
 	c.Version, c.Installed = version(), installed.Version
+	if brew, ok := upgrade.Homebrew(exe); ok {
+		c.Upgrade = func() error { return upgrade.BrewUpgrade(brew) }
+	}
 	relaunch, err := runList(cmd, list.New(c), srv.dir)
 	if err != nil || !relaunch {
 		return err

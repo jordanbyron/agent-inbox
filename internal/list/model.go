@@ -18,6 +18,7 @@ import (
 	"github.com/jordanbyron/agent-inbox/internal/snapshot"
 	"github.com/jordanbyron/agent-inbox/internal/state"
 	"github.com/jordanbyron/agent-inbox/internal/triage"
+	"github.com/jordanbyron/agent-inbox/internal/upgrade"
 )
 
 // StaleAfter is how old a snapshot can be before the list stops presenting
@@ -53,6 +54,9 @@ type Config struct {
 	// offers to relaunch. A nil Installed never does.
 	Version   string
 	Installed func() (string, error)
+	// Upgrade installs the newest release over this binary. Nil leaves the
+	// pill saying a release is out, with nothing to press.
+	Upgrade func() error
 }
 
 // ReloadMsg tells the model that the snapshot file changed.
@@ -100,6 +104,7 @@ type Model struct {
 
 	version     string
 	installed   func() (string, error)
+	upgrade     func() error
 	newer       string
 	checking    bool
 	checkedAt   time.Time
@@ -119,6 +124,7 @@ func New(c Config) Model {
 		tab:       c.Tab,
 		version:   c.Version,
 		installed: c.Installed,
+		upgrade:   c.Upgrade,
 		expanded:  map[triage.Section]bool{},
 		filter:    newInput("", 0),
 		spinner:   spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(theme.Yellow)),
@@ -240,6 +246,12 @@ func (m *Model) checkInstalled() tea.Cmd {
 	}
 }
 
+// released reports whether a newer release is out than the one running
+// and installed.
+func (m Model) released() bool {
+	return m.newer == "" && upgrade.Newer(m.snap.Latest, m.version)
+}
+
 // Relaunching reports whether the list quit to make way for the newer
 // binary, which the caller then runs in its place.
 func (m Model) Relaunching() bool {
@@ -260,6 +272,12 @@ func (m *Model) perform(a action) tea.Cmd {
 	switch a {
 	case actionQuit:
 		return tea.Quit
+	case actionUpgrade:
+		if !m.released() || m.upgrade == nil {
+			return nil
+		}
+		upgrade := m.upgrade
+		return m.run("upgrading agent-inbox", func(Actions) error { return upgrade() }, afterAction{recheck: true})
 	case actionRelaunch:
 		if m.newer == "" {
 			return nil
@@ -408,6 +426,8 @@ type afterAction struct {
 	dialog dialog
 	// quit closes the list when the action succeeds.
 	quit bool
+	// recheck asks at once what binary is installed.
+	recheck bool
 }
 
 // run calls an action in a Cmd, since one that goes to Rex or git can take
@@ -461,6 +481,10 @@ func (m *Model) finish(msg doneMsg) tea.Cmd {
 	}
 	if msg.then.quit {
 		return tea.Quit
+	}
+	if msg.then.recheck {
+		m.checkedAt = time.Time{}
+		return m.checkInstalled()
 	}
 	if msg.then.leaving != "" && m.selected == rowStop(msg.then.leaving) {
 		m.selectNeighbor()
